@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Inet HTTP Client | NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="inet-http-client">
+  <div class="layout">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrap">
+      <main class="article">
+        <article class="article-card">
+          <p class="eyebrow">Services and Tools</p>
+          <h1 class="page-title">Inet HTTP Client</h1>
+          <p class="lead">
+            <code>inet</code> is NAppGUI's small cross-platform networking layer. In this checkout it is narrowly scoped:
+            one HTTP client abstraction, explicit GET/POST helpers, simple whole-response download utilities, and a thin
+            platform backend split across macOS, Windows, and Linux.
+          </p>
+
+          <section id="sources" class="section">
+            <h2>Relevant Source Files</h2>
+            <div class="source-pills">
+              <a class="pill" href="../../src/inet/CMakeLists.txt"><code>src/inet/CMakeLists.txt</code></a>
+              <a class="pill" href="../../src/inet/inet.h"><code>src/inet/inet.h</code></a>
+              <a class="pill" href="../../src/inet/inet.c"><code>src/inet/inet.c</code></a>
+              <a class="pill" href="../../src/inet/httpreq.h"><code>src/inet/httpreq.h</code></a>
+              <a class="pill" href="../../src/inet/httpreq.c"><code>src/inet/httpreq.c</code></a>
+              <a class="pill" href="../../src/inet/oshttpreq.inl"><code>src/inet/oshttpreq.inl</code></a>
+              <a class="pill" href="../../src/inet/osx/oshttpreq.m"><code>src/inet/osx/oshttpreq.m</code></a>
+              <a class="pill" href="../../src/inet/win/oshttpreq.c"><code>src/inet/win/oshttpreq.c</code></a>
+              <a class="pill" href="../../src/inet/linux/oshttpreq.c"><code>src/inet/linux/oshttpreq.c</code></a>
+              <a class="pill" href="../../prj/NAppTarget.cmake"><code>prj/NAppTarget.cmake</code></a>
+              <a class="pill" href="../../prj/nappgui-config.cmake"><code>prj/nappgui-config.cmake</code></a>
+              <a class="pill" href="../../demo/urlimg/urlimg.c"><code>demo/urlimg/urlimg.c</code></a>
+              <a class="pill" href="../../demo/products/prmodel.c"><code>demo/products/prmodel.c</code></a>
+            </div>
+          </section>
+
+          <section id="position" class="section">
+            <h2>Position In The Stack</h2>
+            <p>
+              The target declaration is <code>nap_library(inet "encode" ...)</code>. Startup follows the usual reference-counted pattern:
+              the first <code>inet_start()</code> call starts <code>encode</code> and the platform HTTP backend; the last
+              <code>inet_finish()</code> call shuts the backend down and then finishes <code>encode</code>.
+            </p>
+            <p>
+              Like <code>encode</code>, <code>inet</code> is not part of <code>nappgui.h</code>. Code that uses networking includes
+              <code>&lt;inet/inet.h&gt;</code> and <code>&lt;inet/httpreq.h&gt;</code> explicitly.
+            </p>
+          </section>
+
+          <section id="api" class="section">
+            <h2>Public API Shape</h2>
+            <p>
+              The center of the API is <code>Http</code>. You create it with <code>http_create()</code> or <code>http_secure()</code>,
+              add request headers, perform a GET or POST, and then inspect the parsed response line, response headers, and response body.
+            </p>
+            <p>
+              If the caller passes <code>UINT16_MAX</code> as the port, the constructors normalize that to <code>80</code> for plain HTTP
+              and <code>443</code> for HTTPS. Error reporting is coarse by design and flows through the <code>ierror_t</code> enum.
+            </p>
+          </section>
+
+          <section id="responses" class="section">
+            <h2>Responses Are Parsed Lazily</h2>
+            <p>
+              After <code>http_get()</code> or <code>http_post()</code>, the raw response stays in the backend object until one of the
+              response accessors is called. At that point <code>httpreq.c</code> reads the header stream, parses status lines and header fields,
+              and caches the final values in the portable <code>Http</code> object.
+            </p>
+            <p>
+              There is one subtle point here: if the raw headers contain multiple response blocks because of redirects, the parser keeps the
+              last status line and clears earlier headers. Header lookup is case-insensitive, because the cached header array is searched with
+              <code>str_equ_nocase(...)</code>.
+            </p>
+          </section>
+
+          <section id="helpers" class="section">
+            <h2>Convenience Helpers Use The Encode URL Parser</h2>
+            <p>
+              <code>http_dget()</code> and <code>http_exists()</code> are convenience wrappers around the lower-level <code>Http</code> object.
+              Both call <code>url_parse()</code> from the <code>encode</code> library, choose HTTP versus HTTPS from the parsed scheme, rebuild the
+              resource path with <code>url_resource()</code>, and then issue a request.
+            </p>
+            <ul class="bullet-list">
+              <li><strong><code>http_dget()</code>:</strong> performs a GET, returns the response body as an in-memory <code>Stream</code>, and optionally reports the HTTP status code.</li>
+              <li><strong><code>http_exists()</code>:</strong> performs a GET with auto-redirect disabled and only returns true for status codes in the <code>200..299</code> range.</li>
+            </ul>
+            <p>
+              There is no HEAD helper, no incremental callback API, and no broader REST surface. This library is intentionally much smaller than a general-purpose HTTP SDK.
+            </p>
+          </section>
+
+          <section id="backends" class="section">
+            <h2>Platform Backends</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Platform</th>
+                  <th>Backend</th>
+                  <th>Notable Behavior</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Windows</td>
+                  <td>WinINet</td>
+                  <td>Uses <code>InternetOpen</code>, <code>InternetConnect</code>, and <code>HttpOpenRequest</code>; request headers are accumulated in a UTF-16 stream before sending.</td>
+                </tr>
+                <tr>
+                  <td>macOS</td>
+                  <td><code>NSURLSession</code></td>
+                  <td>Uses session delegates, maps Cocoa networking errors onto <code>ierror_t</code>, and stores response headers/body in NAppGUI streams.</td>
+                </tr>
+                <tr>
+                  <td>Linux</td>
+                  <td>libcurl</td>
+                  <td>Uses one curl handle per <code>OSHttp</code>, writes headers and body through callbacks into memory streams, and initializes libcurl globally in <code>oshttp_init()</code>.</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section id="build" class="section">
+            <h2>Build And Consumption Notes</h2>
+            <p>
+              The CMake helper <code>nap_link_inet_depends(...)</code> links <code>encode</code> plus the platform dependency:
+              <code>wininet</code> on Windows and libcurl on Linux. There is no extra link helper on macOS because the implementation is built
+              against the system frameworks already available to the platform build.
+            </p>
+            <p>
+              One packaging detail is easy to miss: the package-side helper <code>nap_link_inet(...)</code> is written to link
+              <code>nappgui::inet</code>, but the convenience <code>NAPPGUI_LIBRARIES</code> list in <code>prj/nappgui-config.cmake</code>
+              stops at <code>encode</code>. So consumers that rely only on that convenience variable do not pick up <code>inet</code> automatically.
+            </p>
+          </section>
+
+          <section id="usage" class="section">
+            <h2>What The Demos Use It For</h2>
+            <p>
+              <code>demo/urlimg</code> uses <code>http_dget()</code> to download images into a <code>Stream</code> and then feeds that stream into
+              <code>image_read(...)</code>. <code>demo/products</code> uses the lower-level <code>Http</code> object directly so it can inspect status
+              and body separately before passing the response into the JSON layer.
+            </p>
+            <p>
+              Those demos match the library's real role in the stack: it is a simple transport layer meant to hand complete response payloads to
+              other NAppGUI subsystems rather than a full featured networking framework. The dedicated <a href="inet-api-examples.html">Inet API Examples</a>
+              page extracts the common request patterns directly from those demos.
+            </p>
+          </section>
+        </article>
+      </main>
+    </div>
+
+    <aside class="toc"></aside>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

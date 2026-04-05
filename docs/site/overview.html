@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NAppGUI Overview | NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="overview">
+  <div class="layout">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrap">
+      <main class="article">
+        <article class="article-card">
+          <p class="eyebrow">Entry Point</p>
+          <h1 class="page-title">NAppGUI Overview</h1>
+          <p class="lead">
+            NAppGUI is a cross-platform C SDK for native desktop applications. In this checkout it is not just one GUI library:
+            it is a stack of base runtime libraries, drawing and GUI layers, platform backends, optional support libraries, demos,
+            and a resource compiler.
+          </p>
+
+          <div class="callout warn">
+            This page is written against commit <code>2b0099603323ae7a35b8ee6998d35af94f5b16c8</code> from <code>2026-03-17</code>, version <code>1.6.1</code>.
+            All architectural statements here were verified directly against the checked-out source tree.
+          </div>
+
+          <section id="sources" class="section">
+            <h2>Relevant Source Files</h2>
+            <div class="source-pills">
+              <a class="pill" href="../../README.md"><code>README.md</code></a>
+              <a class="pill" href="../../src/nappgui.h"><code>src/nappgui.h</code></a>
+              <a class="pill" href="../../CMakeTargets.cmake"><code>CMakeTargets.cmake</code></a>
+              <a class="pill" href="../../prj/version.txt"><code>prj/version.txt</code></a>
+              <a class="pill" href="../../src/osapp/osapp.c"><code>src/osapp/osapp.c</code></a>
+              <a class="pill" href="../../src/draw2d/guictx.hxx"><code>src/draw2d/guictx.hxx</code></a>
+              <a class="pill" href="../../src/gui/layout.c"><code>src/gui/layout.c</code></a>
+              <a class="pill" href="../../src/core/dbind.h"><code>src/core/dbind.h</code></a>
+              <a class="pill" href="../../prj/NAppTarget.cmake"><code>prj/NAppTarget.cmake</code></a>
+            </div>
+          </section>
+
+          <section id="scope" class="section">
+            <h2>Purpose and Scope</h2>
+            <p>
+              At the public include level, <code>src/nappgui.h</code> pulls in <code>osapp/osapp.h</code> and <code>gui/guiall.h</code>.
+              That makes NAppGUI look like a single framework from the outside, but internally the codebase is split into independent libraries
+              with explicit startup chains and dependency boundaries.
+            </p>
+            <p>
+              The main desktop story is: use <code>osmain(...)</code>, build your UI with <code>gui</code>, let the platform-specific
+              <code>osgui</code> backend provide native widgets and event integration, and optionally add <code>encode</code>, <code>inet</code>,
+              or <code>ogl3d</code> when the application needs them.
+            </p>
+          </section>
+
+          <section id="stack" class="section">
+            <h2>Library Stack</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Layer</th>
+                  <th>Libraries</th>
+                  <th>Role</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Base runtime</td>
+                  <td><code>sewer</code>, <code>osbs</code>, <code>core</code></td>
+                  <td>Types, assertions, memory, streams, events, files, OS services, DBind, resource packs.</td>
+                </tr>
+                <tr>
+                  <td>Geometry and drawing</td>
+                  <td><code>geom2d</code>, <code>draw2d</code></td>
+                  <td>Geometry primitives, images, fonts, drawing contexts, and the base <code>GuiCtx</code> interface.</td>
+                </tr>
+                <tr>
+                  <td>Native backend</td>
+                  <td><code>osgui</code></td>
+                  <td>Platform-specific widgets, windows, menus, cursors, and control wrappers.</td>
+                </tr>
+                <tr>
+                  <td>High-level UI</td>
+                  <td><code>gui</code>, <code>osapp</code></td>
+                  <td>Controls, layouts, data binding, windows, and application bootstrap/runloop integration.</td>
+                </tr>
+                <tr>
+                  <td>Optional support</td>
+                  <td><code>encode</code>, <code>inet</code>, <code>ogl3d</code></td>
+                  <td>Encoding/serialization, HTTP transport, and platform OpenGL context management.</td>
+                </tr>
+                <tr>
+                  <td>Build tooling</td>
+                  <td><code>tools/nrc</code></td>
+                  <td>Resource compiler used by the CMake build to generate embedded or packed assets.</td>
+                </tr>
+              </tbody>
+            </table>
+            <p>
+              One architecture detail worth keeping in mind is the dependency edge between <code>gui</code> and <code>osgui</code>.
+              In the real CMake graph, both depend on <code>draw2d</code>; <code>osapp</code> is the layer that joins them.
+            </p>
+          </section>
+
+          <section id="startup" class="section">
+            <h2>Public Application Shape</h2>
+            <p>
+              The normal public bootstrap path is not a manual call sequence ending in <code>osapp_run()</code>.
+              The demos use <code>osmain(i_create, i_destroy, "", App)</code>, and <code>osmain_imp</code> performs the real setup:
+              <code>osgui_start()</code>, <code>gui_start()</code>, native <code>GuiCtx</code> creation, current-context installation,
+              and the internal <code>_osapp_run(...)</code> event loop.
+            </p>
+            <p>
+              That distinction matters because it explains why the public API surface is smaller than the internal startup sequence.
+              The public application shape is intentionally narrower than the internal bootstrap path.
+            </p>
+          </section>
+
+          <section id="systems" class="section">
+            <h2>Cross-Cutting Systems</h2>
+            <ul class="bullet-list">
+              <li><strong>GuiCtx:</strong> backend function tables let the high-level GUI layer work without directly depending on one platform implementation.</li>
+              <li><strong>Layout:</strong> recursive grid composition with a documented natural-size and expansion pass.</li>
+              <li><strong>DBind:</strong> runtime type metadata plus layout/member binding for data-driven controls.</li>
+              <li><strong>Resources:</strong> embedded and packed resource modes via <code>nrc</code>, <code>respack</code>, and <code>gui_respack()</code>.</li>
+              <li><strong>Events:</strong> typed listener callbacks used across UI and core subsystems.</li>
+            </ul>
+          </section>
+
+          <section id="paths" class="section">
+            <h2>Suggested Reading Paths</h2>
+            <p>
+              If you are new to the codebase, start with <a href="core-architecture.html">Core Architecture</a>, then move to
+              <a href="guictx-abstraction.html">GuiCtx Abstraction Layer</a>, <a href="layout-cell-management.html">Layout and Cell Management</a>,
+              and <a href="platform-implementations.html">Platform Implementations</a>.
+            </p>
+            <p>
+              If you need to build with the SDK or package applications, go next to
+              <a href="build-system-configuration.html">Build System and Configuration</a>. If you need widgets, go to
+              <a href="gui-components.html">GUI Components</a>.
+            </p>
+          </section>
+        </article>
+      </main>
+    </div>
+
+    <aside class="toc"></aside>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

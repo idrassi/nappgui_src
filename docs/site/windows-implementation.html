@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Windows Implementation | NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="windows-implementation">
+  <div class="layout">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrap">
+      <main class="article">
+        <article class="article-card">
+          <p class="eyebrow">Platforms</p>
+          <h1 class="page-title">Windows Implementation</h1>
+          <p class="lead">
+            The Windows backend is a Win32 implementation layered with GDI/GDI+ drawing and optional WebView2 support.
+            It uses the standard Win32 message model, a custom accelerator registry, and a window/control wrapper layer in <code>osgui</code>.
+          </p>
+
+          <div class="callout warn">
+            This checkout does not use Direct2D for the main Windows drawing path.
+            The drawing backend in <code>draw_win.cpp</code> is built around <code>Gdiplus</code>.
+          </div>
+
+          <section id="sources" class="section">
+            <h2>Relevant Source Files</h2>
+            <div class="source-pills">
+              <a class="pill" href="../../src/osapp/win/osapp_win.c"><code>src/osapp/win/osapp_win.c</code></a>
+              <a class="pill" href="../../src/osgui/win/osgui_win.cpp"><code>src/osgui/win/osgui_win.cpp</code></a>
+              <a class="pill" href="../../src/osgui/win/oswindow.c"><code>src/osgui/win/oswindow.c</code></a>
+              <a class="pill" href="../../src/draw2d/win/draw_win.cpp"><code>src/draw2d/win/draw_win.cpp</code></a>
+              <a class="pill" href="../../src/draw2d/win/osimage.cpp"><code>src/draw2d/win/osimage.cpp</code></a>
+              <a class="pill" href="../../src/osgui/win/osweb.cpp"><code>src/osgui/win/osweb.cpp</code></a>
+            </div>
+          </section>
+
+          <section id="lifecycle" class="section">
+            <h2>Application Lifecycle and Backend Startup</h2>
+            <p>
+              <code>_osapp_init_imp(...)</code> captures the module instance, converts the real command line with
+              <code>CommandLineToArgvW</code>, stores the app callbacks, and later uses <code>SetTimer</code> to drive the optional
+              frame/update callback. Termination posts <code>WM_QUIT</code> through <code>PostQuitMessage</code> and then runs the stored destroy/end callbacks.
+            </p>
+            <p>
+              Separately, <code>_osgui_start_imp()</code> registers the custom window/view/web classes, initializes common controls,
+              optionally initializes COM for web support, starts XP style helpers, loads <code>dwmapi.dll</code> conditionally,
+              starts GDI+, creates a default parent panel window, prepares shared cursors/brushes, loads the RichEdit control,
+              and builds the accelerator infrastructure.
+            </p>
+          </section>
+
+          <section id="window" class="section">
+            <h2>Window System</h2>
+            <p>
+              The core wrapper type is <code>OSWindow</code>, which stores the real <code>HWND</code>, style flags, current popup menu,
+              tooltip window, cursor, panel attachment, resize state, role, close/move/resize listeners, tabstop state, and hotkeys.
+            </p>
+            <p>
+              Resize handling is split carefully across <code>WM_SIZING</code> and <code>WM_SIZE</code>. While the user drags borders,
+              <code>i_resizing()</code> converts frame size to client size, emits <code>ekGUI_EVENT_WND_SIZING</code>, and can constrain the new frame.
+              Once the size is accepted, the backend emits <code>ekGUI_EVENT_WND_SIZE</code> and redraws the child tree.
+            </p>
+            <p>
+              Keyboard behavior is window-centric: tab traversal, return/default-button behavior, escape-close semantics, and accelerator dispatch
+              all run through the window message loop and tabstop machinery.
+            </p>
+          </section>
+
+          <section id="modal" class="section">
+            <h2>Modal Loops, Tooltips, and Accelerators</h2>
+            <p>
+              Modal windows use their own message loop and stop through a private message constant, <code>0x444</code>, named
+              <code>i_WM_MODAL_STOP</code>. That is how <code>oswindow_stop_modal(...)</code> returns a modal result without depending on a separate dialog framework.
+            </p>
+            <p>
+              Tooltips are also handled explicitly. Each window lazily creates a tooltip <code>HWND</code> and updates it with
+              <code>TTM_ADDTOOL</code>/<code>TTM_UPDATETIPTEXT</code>. Keyboard accelerators are collected in arrays and materialized into a real
+              accelerator table via <code>CreateAcceleratorTable</code>.
+            </p>
+          </section>
+
+          <section id="drawing" class="section">
+            <h2>Drawing and Imaging</h2>
+            <p>
+              <code>draw_win.cpp</code> uses <code>Gdiplus::Graphics</code>, <code>Gdiplus::Bitmap</code>, and related types for line/path/image operations,
+              font sizing helpers, and raster image drawing. The image layer in <code>osimage.cpp</code> also uses GDI+ for bitmap import/export,
+              scaling, palette inspection, and codec handling.
+            </p>
+            <p>
+              That means the Windows rendering story is still very much rooted in the classic Win32/GDI ecosystem, even though the API surface above it is portable.
+            </p>
+          </section>
+
+          <section id="webview" class="section">
+            <h2>WebView2 Integration</h2>
+            <p>
+              When <code>NAPPGUI_WEB_SUPPORT</code> is enabled, the Windows web wrapper creates a WebView2 environment asynchronously through
+              <code>CreateCoreWebView2EnvironmentWithOptions</code>. The controller callback stores the controller and core view,
+              enables basic settings, sizes it to the current client rect, and replays any navigation that was requested before initialization finished.
+            </p>
+            <p>
+              The public web commands map to <code>Navigate</code>, <code>GoBack</code>, and <code>GoForward</code>. If support is not compiled in,
+              the wrapper still exists as a focusable control shell but the browser actions are effectively no-ops.
+            </p>
+          </section>
+        </article>
+      </main>
+    </div>
+
+    <aside class="toc"></aside>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

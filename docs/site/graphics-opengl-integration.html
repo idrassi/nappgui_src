@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Graphics and OpenGL Integration | NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="graphics-opengl-integration">
+  <div class="layout">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrap">
+      <main class="article">
+        <article class="article-card">
+          <p class="eyebrow">Core</p>
+          <h1 class="page-title">Graphics and OpenGL Integration</h1>
+          <p class="lead">
+            NAppGUI splits graphics into a portable 2D drawing layer, <code>draw2d</code>, and a separate OpenGL helper layer,
+            <code>ogl3d</code>. The first supports fonts, images, and draw contexts; the second creates native OpenGL contexts for views.
+          </p>
+
+          <section id="sources" class="section">
+            <h2>Relevant Source Files</h2>
+            <div class="source-pills">
+              <a class="pill" href="../../src/draw2d/draw2d.h"><code>src/draw2d/draw2d.h</code></a>
+              <a class="pill" href="../../src/draw2d/dctx.h"><code>src/draw2d/dctx.h</code></a>
+              <a class="pill" href="../../src/draw2d/font.h"><code>src/draw2d/font.h</code></a>
+              <a class="pill" href="../../src/draw2d/image.h"><code>src/draw2d/image.h</code></a>
+              <a class="pill" href="../../src/ogl3d/ogl3d.h"><code>src/ogl3d/ogl3d.h</code></a>
+              <a class="pill" href="../../src/ogl3d/ogl3d.c"><code>src/ogl3d/ogl3d.c</code></a>
+              <a class="pill" href="../../src/ogl3d/osx/ogl3dimp.m"><code>src/ogl3d/osx/ogl3dimp.m</code></a>
+              <a class="pill" href="../../src/ogl3d/win/ogl3dimp.c"><code>src/ogl3d/win/ogl3dimp.c</code></a>
+              <a class="pill" href="../../src/ogl3d/gtk/ogl3dimp.c"><code>src/ogl3d/gtk/ogl3dimp.c</code></a>
+            </div>
+          </section>
+
+          <section id="draw2d" class="section">
+            <h2>draw2d Scope</h2>
+            <p>
+              The public <code>draw2d</code> layer is intentionally compact at the top level: start/finish plus a preferred monospace family hint.
+              The real surface expands through the related headers: <code>dctx.h</code> for drawing contexts, <code>font.h</code> for font creation and measurement,
+              and <code>image.h</code> for raster image loading, conversion, scaling, trimming, encoding, and native-handle access.
+            </p>
+            <p>
+              <code>DCtx</code> can draw into an offscreen bitmap via <code>dctx_bitmap(...)</code>, then materialize the result as an <code>Image</code>.
+              That offscreen path is used heavily by owner-drawn widgets and platform control caching.
+            </p>
+          </section>
+
+          <section id="backends" class="section">
+            <h2>2D Backend Implementations</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Platform</th>
+                  <th>Main Stack</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>macOS</td>
+                  <td>Core Graphics, Cocoa fonts/images</td>
+                </tr>
+                <tr>
+                  <td>Windows</td>
+                  <td>GDI/GDI+</td>
+                </tr>
+                <tr>
+                  <td>GTK</td>
+                  <td>Cairo plus Pango text layout</td>
+                </tr>
+              </tbody>
+            </table>
+            <p>
+              This backend-specific code is hidden behind the portable draw/image/font APIs, which is why owner-drawn widgets in <code>gui</code>
+              can be shared across all three desktop platforms.
+            </p>
+          </section>
+
+          <section id="fonts-images" class="section">
+            <h2>Fonts and Images as First-Class Types</h2>
+            <p>
+              Fonts can be created by family, system default, or monospace default, then copied or transformed with new style/width/x-scale.
+              The API exposes family, size, height, width, ascent/descent, installed families, and the native backend handle.
+            </p>
+            <p>
+              Images can come from raw pixels, pixbufs, files, memory data, or resource packs. They support copy, crop, rotate, scale, stream I/O,
+              frame counts for animated formats, codec inspection, pixel extraction, and an attached user data pointer.
+            </p>
+          </section>
+
+          <section id="ogl3d" class="section">
+            <h2>ogl3d Lifecycle and Context Model</h2>
+            <p>
+              <code>ogl3d</code> is deliberately separate from <code>draw2d</code>. Its public API manages OpenGL context lifetime
+              with <code>ogl3d_start()</code>, <code>ogl3d_context(...)</code>, <code>ogl3d_begin_draw()</code>, <code>ogl3d_end_draw()</code>,
+              <code>ogl3d_set_size()</code>, and <code>ogl3d_destroy()</code>.
+            </p>
+            <p>
+              The layer tracks context allocations/deallocations and asserts on shutdown if a context was leaked. It also validates the requested
+              OpenGL version through GLEW before declaring a context usable. The dedicated <a href="ogl3d-internals.html">OGL3D Internals</a> page
+              goes deeper into the backend-specific details and the <code>glhello</code> integration pattern.
+            </p>
+          </section>
+
+          <section id="ogl-platforms" class="section">
+            <h2>Platform OpenGL Implementations</h2>
+            <ul class="bullet-list">
+              <li><strong>macOS:</strong> creates <code>NSOpenGLContext</code> with profile attributes chosen from <code>OGLProps</code> and attaches it to an <code>NSView</code>.</li>
+              <li><strong>Windows:</strong> uses <code>wgl</code> with a native window device context.</li>
+              <li><strong>GTK:</strong> uses EGL on top of GTK/X11 and maps the requested API/profile into EGL context attributes.</li>
+            </ul>
+            <p>
+              The public API stays the same, but the native handle passed as <code>view</code> is platform-specific by design.
+            </p>
+          </section>
+        </article>
+      </main>
+    </div>
+
+    <aside class="toc"></aside>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

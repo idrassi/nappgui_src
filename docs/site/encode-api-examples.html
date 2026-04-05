@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Encode API Examples | NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="encode-api-examples">
+  <div class="layout">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrap">
+      <main class="article">
+        <article class="article-card">
+          <p class="eyebrow">Services and Tools</p>
+          <h1 class="page-title">Encode API Examples</h1>
+          <p class="lead">
+            These examples are taken from the actual repo usage patterns in <code>demo/htjson</code> and the public
+            <code>encode</code> headers. They show the intended way to use Base64 helpers, DBind-backed JSON, and the URL parser.
+          </p>
+
+          <section id="sources" class="section">
+            <h2>Relevant Source Files</h2>
+            <div class="source-pills">
+              <a class="pill" href="../../src/encode/base64.h"><code>src/encode/base64.h</code></a>
+              <a class="pill" href="../../src/encode/json.h"><code>src/encode/json.h</code></a>
+              <a class="pill" href="../../src/encode/url.h"><code>src/encode/url.h</code></a>
+              <a class="pill" href="../../demo/htjson/htjson.c"><code>demo/htjson/htjson.c</code></a>
+              <a class="pill" href="../../src/encode/url.c"><code>src/encode/url.c</code></a>
+            </div>
+          </section>
+
+          <section id="startup" class="section">
+            <h2>1. Startup Choice Depends On The Types You Serialize</h2>
+            <p>
+              For pure Base64, JSON, and URL parsing, <code>encode_start()</code> / <code>encode_finish()</code> is the right lifecycle pair.
+              The <code>htjson</code> demo starts <code>draw2d</code> instead because it also serializes an <code>Image</code>, and that type's
+              DBind registration lives in the graphics stack.
+            </p>
+            <pre><code>encode_start();
+/* Base64 / JSON / URL work here */
+encode_finish();</code></pre>
+          </section>
+
+          <section id="base64" class="section">
+            <h2>2. Base64 Encode And Decode</h2>
+            <p>
+              The repo exposes both raw-size helpers and high-level convenience wrappers. In normal application code, the wrapper forms are simpler.
+            </p>
+            <pre><code>String *b64 = b64_encode_from_cstr("hello");
+Buffer *raw = b64_decode_from_str(b64);
+
+/* use buffer_data(raw) / buffer_size(raw) */
+
+buffer_destroy(&amp;raw);
+str_destroy(&amp;b64);</code></pre>
+            <p>
+              There are equivalent wrappers for files, streams, raw byte arrays, and NAppGUI <code>String</code> values.
+            </p>
+          </section>
+
+          <section id="json-primitives" class="section">
+            <h2>3. JSON Read And Write For Primitive Types</h2>
+            <p>
+              <code>json_read(...)</code> allocates the target value and returns a typed pointer. That is why even scalar values in
+              <code>demo/htjson</code> are read as <code>bool_t *</code>, <code>uint16_t *</code>, and so on, then released with <code>json_destroy(...)</code>.
+            </p>
+            <pre><code>Stream *stm = stm_from_block((const byte_t *)"true", 4);
+bool_t *value = json_read(stm, NULL, bool_t);
+
+/* *value == TRUE */
+
+json_destroy(&amp;value, bool_t);
+stm_close(&amp;stm);</code></pre>
+          </section>
+
+          <section id="json-structs" class="section">
+            <h2>4. DBind-Registered Structs</h2>
+            <p>
+              Structured JSON only works after the type has been described through DBind. That registration step is not optional;
+              it is the schema the JSON layer uses at runtime.
+            </p>
+            <pre><code>typedef struct _product_t Product;
+typedef struct _products_t Products;
+
+struct _product_t {
+    String *description;
+    real32_t price;
+};
+
+struct _products_t {
+    uint32_t size;
+    ArrSt(Product) *data;
+};
+
+DeclSt(Product);
+
+dbind(Product, String *, description);
+dbind(Product, real32_t, price);
+dbind(Products, uint32_t, size);
+dbind(Products, ArrSt(Product) *, data);
+
+Products *products = json_read(stm, NULL, Products);
+json_destroy(&amp;products, Products);</code></pre>
+            <p>
+              The same DBind metadata also drives <code>json_write(...)</code>, so reading and writing stay symmetric.
+            </p>
+          </section>
+
+          <section id="json-images" class="section">
+            <h2>5. Binary And Image Values Travel As Base64 Strings</h2>
+            <p>
+              The JSON implementation treats binary DBind values as Base64 strings. The <code>htjson</code> demo uses that path to round-trip an
+              <code>Image</code> resource through JSON after starting <code>draw2d</code>.
+            </p>
+            <pre><code>ResPack *pack = res_htjson_respack("");
+const byte_t *data = respack_file(pack, JSON_B64_IMAGE_TXT, &amp;size);
+Stream *stm = stm_from_block(data, size);
+
+Image *image = json_read(stm, NULL, Image);
+
+json_destroy(&amp;image, Image);
+stm_close(&amp;stm);
+respack_destroy(&amp;pack);</code></pre>
+          </section>
+
+          <section id="json-strings" class="section">
+            <h2>6. Writing Directly To A String</h2>
+            <p>
+              If the caller wants the serialized payload as a NAppGUI string instead of a stream, use <code>json_write_str(...)</code>.
+            </p>
+            <pre><code>String *json = json_write_str(products, NULL, Products);
+/* use tc(json) */
+str_destroy(&amp;json);</code></pre>
+          </section>
+
+          <section id="url" class="section">
+            <h2>7. URL Parsing And Resource Extraction</h2>
+            <p>
+              <code>url_parse(...)</code> is a structural splitter. It is most useful when you need the host/port plus the request resource
+              path exactly the way <code>inet</code> expects it.
+            </p>
+            <pre><code>Url *url = url_parse("https://user:pass@example.com:8443/api/items?q=cpu#top");
+String *resource = url_resource(url);
+
+/* url_host(url)      -&gt; "example.com" */
+/* url_port(url)      -&gt; 8443          */
+/* tc(resource)       -&gt; "/api/items?q=cpu#top" */
+
+str_destroy(&amp;resource);
+url_destroy(&amp;url);</code></pre>
+          </section>
+
+          <section id="notes" class="section">
+            <h2>Practical Notes</h2>
+            <ul class="bullet-list">
+              <li><strong>Unknown JSON object members:</strong> they are skipped, not treated as fatal schema errors.</li>
+              <li><strong>Error logging:</strong> pass a <code>JsonOpts</code> with a <code>log</code> array to collect parser messages with row and column data.</li>
+              <li><strong>Null handling:</strong> strings, containers, binary values, and struct-pointer members can be cleared by JSON <code>null</code> if DBind allows it.</li>
+              <li><strong>Enums:</strong> JSON writes enum aliases, not raw integer ordinals.</li>
+            </ul>
+          </section>
+        </article>
+      </main>
+    </div>
+
+    <aside class="toc"></aside>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

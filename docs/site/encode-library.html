@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Encode Library | NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="encode-library">
+  <div class="layout">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrap">
+      <main class="article">
+        <article class="article-card">
+          <p class="eyebrow">Services and Tools</p>
+          <h1 class="page-title">Encode Library</h1>
+          <p class="lead">
+            <code>encode</code> is a small non-GUI library layered directly on top of <code>core</code>. In this checkout it provides
+            three things: Base64 helpers, a DBind-driven JSON reader/writer, and a lightweight URL parser used by higher layers
+            such as <code>inet</code>.
+          </p>
+
+          <section id="sources" class="section">
+            <h2>Relevant Source Files</h2>
+            <div class="source-pills">
+              <a class="pill" href="../../src/encode/CMakeLists.txt"><code>src/encode/CMakeLists.txt</code></a>
+              <a class="pill" href="../../src/encode/encode.h"><code>src/encode/encode.h</code></a>
+              <a class="pill" href="../../src/encode/encode.c"><code>src/encode/encode.c</code></a>
+              <a class="pill" href="../../src/encode/base64.h"><code>src/encode/base64.h</code></a>
+              <a class="pill" href="../../src/encode/base64.c"><code>src/encode/base64.c</code></a>
+              <a class="pill" href="../../src/encode/json.h"><code>src/encode/json.h</code></a>
+              <a class="pill" href="../../src/encode/json.c"><code>src/encode/json.c</code></a>
+              <a class="pill" href="../../src/encode/url.h"><code>src/encode/url.h</code></a>
+              <a class="pill" href="../../src/encode/url.c"><code>src/encode/url.c</code></a>
+              <a class="pill" href="../../demo/htjson/htjson.c"><code>demo/htjson/htjson.c</code></a>
+              <a class="pill" href="../../src/nappgui.h"><code>src/nappgui.h</code></a>
+            </div>
+          </section>
+
+          <section id="position" class="section">
+            <h2>Position In The Library Stack</h2>
+            <p>
+              The target declaration is <code>nap_library(encode "core" ...)</code>, so <code>encode</code> is a first-class library,
+              not a header-only helper. Its lifecycle mirrors the rest of the stack: <code>encode_start()</code> is reference-counted and,
+              on the first user, calls <code>core_start()</code>; <code>encode_finish()</code> unwinds that relationship on the last user.
+            </p>
+            <p>
+              It is also outside the all-in-one <code>nappgui.h</code> umbrella. That header only includes <code>osapp</code> and <code>gui</code>,
+              so projects that use Base64, JSON, or URL parsing include the <code>encode</code> headers explicitly.
+            </p>
+          </section>
+
+          <section id="base64" class="section">
+            <h2>Base64 Helpers</h2>
+            <p>
+              The Base64 surface is intentionally direct. It exposes raw size helpers, raw encode/decode functions, and convenience wrappers
+              that accept a <code>Stream</code>, file path, raw byte block, <code>String</code>, or C string.
+            </p>
+            <p>
+              The implementation is in-memory rather than streaming. File and stream helpers read the full payload and then build either a
+              NAppGUI <code>String</code> or <code>Buffer</code>. That keeps the API small and consistent with the rest of the core runtime,
+              but it also means <code>encode</code> is aimed at modest data blobs rather than chunked transport pipelines.
+            </p>
+          </section>
+
+          <section id="json" class="section">
+            <h2>JSON Is Driven By DBind Metadata</h2>
+            <p>
+              The JSON API is macro-fronted. Calls like <code>json_read(stm, opts, Products)</code> and <code>json_write(stm, data, opts, Products)</code>
+              stringify the type name and pass it to the implementation, which resolves the type through the DBind registry.
+            </p>
+            <p>
+              In practice that means the parser and writer understand NAppGUI's runtime type model rather than a separate schema language.
+              Primitive booleans, integers, reals, enums, strings, structs, binary values, and containers all flow through DBind.
+              Unknown JSON object members are skipped instead of failing the whole parse, and optional diagnostics can be appended to
+              <code>JsonOpts.log</code> with line and column information.
+            </p>
+          </section>
+
+          <section id="json-details" class="section">
+            <h2>Typed Behavior Worth Knowing</h2>
+            <ul class="bullet-list">
+              <li><strong>Enums:</strong> JSON uses enum aliases, not raw integer ordinals, because writing goes through <code>dbind_enum_alias(...)</code>.</li>
+              <li><strong>Containers:</strong> array input maps onto DBind containers, with separate handling for pointer containers like <code>ArrPt(...)</code> versus value containers like <code>ArrSt(...)</code>.</li>
+              <li><strong>Binary fields:</strong> binary DBind values are represented as Base64 strings in JSON, reusing the same Base64 helpers from this library.</li>
+              <li><strong>Nulls:</strong> string pointers, binary blobs, containers, and struct-pointer members can be cleared through DBind's null-setting hooks.</li>
+              <li><strong>Output style:</strong> the writer produces compact JSON and appends a trailing NUL byte to the target stream, which matches the rest of the stream/string conventions in the project.</li>
+            </ul>
+          </section>
+
+          <section id="examples" class="section">
+            <h2>What The Demo Actually Proves</h2>
+            <p>
+              <code>demo/htjson</code> is the clearest source-backed walkthrough. It reads and writes primitive scalars, arrays, and DBind-registered structs,
+              then demonstrates an <code>Image</code> case after starting <code>draw2d</code>. That matters because <code>encode</code> itself depends only on
+              <code>core</code>; richer types become serializable only when their owning subsystem has registered the corresponding DBind metadata.
+            </p>
+          </section>
+
+          <section id="url" class="section">
+            <h2>URL Parsing Is Lightweight And Structural</h2>
+            <p>
+              <code>url_parse()</code> scans a URL into scheme, optional user/password, host, optional numeric port, path, params, query, and fragment.
+              <code>url_resource()</code> reconstructs the path-plus-suffix part that <code>inet</code> later passes to HTTP requests.
+            </p>
+            <p>
+              This is a simple splitter, not a full RFC-normalizing URL toolkit. There is no percent-decoding, no query-map abstraction, and no rich URL builder.
+              If no explicit port is present, the parser leaves the value at <code>UINT16_MAX</code>; callers such as <code>http_create()</code> and
+              <code>http_secure()</code> interpret that as the default <code>80</code> or <code>443</code>.
+            </p>
+          </section>
+
+          <section id="reading" class="section">
+            <h2>Reading Order</h2>
+            <p>
+              Start with <code>encode.c</code> for lifecycle, then read <code>base64.h</code>/<code>base64.c</code> for the simple utility layer.
+              After that, move to <code>json.h</code>/<code>json.c</code> together with <code>demo/htjson/htjson.c</code>, because the JSON subsystem makes
+              most sense once you see the DBind-driven usage pattern. Finish with <code>url.c</code> if you need to understand how <code>inet</code>
+              splits and reconstructs request URLs.
+            </p>
+            <p>
+              If you want repo-backed usage patterns rather than architecture, continue with <a href="encode-api-examples.html">Encode API Examples</a>.
+            </p>
+          </section>
+        </article>
+      </main>
+    </div>
+
+    <aside class="toc"></aside>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

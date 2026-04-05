@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>File System and I/O | NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="file-system-io">
+  <div class="layout">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrap">
+      <main class="article">
+        <article class="article-card">
+          <p class="eyebrow">Core</p>
+          <h1 class="page-title">File System and I/O</h1>
+          <p class="lead">
+            NAppGUI splits filesystem access into two layers: low-level OS wrappers in <code>osbs/bfile.h</code>
+            and higher-level convenience functions in <code>core/hfile.h</code>. Streams then provide a unified read/write
+            surface across memory, files, and sockets.
+          </p>
+
+          <section id="sources" class="section">
+            <h2>Relevant Source Files</h2>
+            <div class="source-pills">
+              <a class="pill" href="../../src/osbs/bfile.h"><code>src/osbs/bfile.h</code></a>
+              <a class="pill" href="../../src/core/hfile.h"><code>src/core/hfile.h</code></a>
+              <a class="pill" href="../../src/core/stream.h"><code>src/core/stream.h</code></a>
+            </div>
+          </section>
+
+          <section id="layers" class="section">
+            <h2>Low-Level vs High-Level Filesystem Layers</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Layer</th>
+                  <th>Main API</th>
+                  <th>Role</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>osbs</code></td>
+                  <td><code>bfile_*</code>, <code>bfile_dir_*</code></td>
+                  <td>Thin OS-facing file and directory operations.</td>
+                </tr>
+                <tr>
+                  <td><code>core</code></td>
+                  <td><code>hfile_*</code></td>
+                  <td>Higher-level helpers for sync, buffering, string loading, stream creation, and app/home/tmp path resolution.</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section id="bfile" class="section">
+            <h2>bfile: Basic Filesystem Access</h2>
+            <p>
+              <code>bfile.h</code> provides the raw path and handle operations: working/home/data/executable/temp directories,
+              directory creation/open/enumeration/delete, file create/open/close, stat calls, read/write, seek, delete, and rename.
+            </p>
+            <p>
+              This is the layer used when the codebase needs explicit control over file handles or platform path queries without the higher-level object wrappers.
+            </p>
+          </section>
+
+          <section id="hfile" class="section">
+            <h2>hfile: Higher-Level Convenience API</h2>
+            <p>
+              <code>hfile.h</code> builds on the low-level layer with more application-friendly operations:
+              recursive directory sync, recursive listing, file existence/uptodate checks, whole-file load into <code>Buffer</code>,
+              <code>String</code>, or <code>Stream</code>, writing files from strings or raw data, and directory walking with listeners.
+            </p>
+            <p>
+              It also exposes application-specific path helpers like <code>hfile_appdata(...)</code>, <code>hfile_home_dir(...)</code>,
+              and <code>hfile_tmp_path(...)</code>, which is why many demos persist state without writing platform-specific path code.
+            </p>
+          </section>
+
+          <section id="stream" class="section">
+            <h2>Stream API</h2>
+            <p>
+              <code>Stream</code> is the main I/O abstraction inside the repo. It can be created from a memory block, memory buffer,
+              file, appendable file, or socket. It exposes endian and Unicode format selection, tokenization settings, bytes read/written counters,
+              error state, token positions, and a wide set of typed read/write helpers for integers, reals, booleans, characters, lines, and tokens.
+            </p>
+            <p>
+              That is why serialization code like DBind, image import/export, JSON parsing, and resource loading can all share one I/O vocabulary.
+            </p>
+          </section>
+
+          <section id="patterns" class="section">
+            <h2>Typical Usage Pattern</h2>
+            <p>
+              Use <code>bfile</code> when you need explicit low-level filesystem control, <code>hfile</code> when you want whole-file or directory-level convenience,
+              and <code>Stream</code> when the caller should not care whether bytes come from memory, disk, or a socket.
+            </p>
+            <p>
+              The three layers are intentionally complementary rather than redundant.
+            </p>
+          </section>
+        </article>
+      </main>
+    </div>
+
+    <aside class="toc"></aside>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

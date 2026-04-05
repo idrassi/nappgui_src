@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Data Binding System | NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="data-binding-system">
+  <div class="layout">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrap">
+      <main class="article">
+        <article class="article-card">
+          <p class="eyebrow">Foundations</p>
+          <h1 class="page-title">Data Binding System</h1>
+          <p class="lead">
+            NAppGUI's binding model is runtime-driven. <code>DBind</code> stores type metadata for structs, enums,
+            binary objects, and containers, while the GUI layer attaches that metadata to layouts and cells to keep
+            controls synchronized with C objects.
+          </p>
+
+          <section id="sources" class="section">
+            <h2>Relevant Source Files</h2>
+            <div class="source-pills">
+              <a class="pill" href="../../src/core/dbind.h"><code>src/core/dbind.h</code></a>
+              <a class="pill" href="../../src/core/dbind.c"><code>src/core/dbind.c</code></a>
+              <a class="pill" href="../../src/core/event.h"><code>src/core/event.h</code></a>
+              <a class="pill" href="../../src/gui/layout.h"><code>src/gui/layout.h</code></a>
+              <a class="pill" href="../../src/gui/cell.h"><code>src/gui/cell.h</code></a>
+              <a class="pill" href="../../src/gui/layout.c"><code>src/gui/layout.c</code></a>
+              <a class="pill" href="../../src/gui/gbind.c"><code>src/gui/gbind.c</code></a>
+              <a class="pill" href="../../demo/guihello/guibind.c"><code>demo/guihello/guibind.c</code></a>
+              <a class="pill" href="../../demo/guihello/layoutbind.c"><code>demo/guihello/layoutbind.c</code></a>
+              <a class="pill" href="../../demo/bode/bdview.c"><code>demo/bode/bdview.c</code></a>
+            </div>
+          </section>
+
+          <section id="registry" class="section">
+            <h2>DBind Registry Model</h2>
+            <p>
+              The core API registers metadata with macros such as <code>dbind(type, mtype, mname)</code>,
+              <code>dbind_enum(...)</code>, <code>dbind_binary(...)</code>, and <code>dbind_alias(...)</code>.
+              The runtime then exposes creation, copy, init/remove, compare, read/write, defaults, numeric ranges,
+              precision, increment size, and text suffixes through <code>dbind_*</code> helpers.
+            </p>
+            <p>
+              This is not code generation. All binding behavior is driven from runtime type lookup and member metadata stored in <code>DBind</code>.
+              The same registry also understands container types such as <code>ArrPt</code> and <code>ArrSt</code>, which are registered during core startup.
+            </p>
+          </section>
+
+          <section id="layout-binding" class="section">
+            <h2>Binding Layouts and Cells</h2>
+            <p>
+              The GUI surface has two layers of attachment:
+            </p>
+            <ul class="bullet-list">
+              <li><code>layout_dbind(...)</code> associates a layout with a struct type and an optional change listener.</li>
+              <li><code>layout_dbind_obj(...)</code> attaches a concrete object instance.</li>
+              <li><code>cell_dbind(...)</code> maps one cell to one struct member.</li>
+              <li><code>layout_dbind_update(...)</code> refreshes one bound member after programmatic changes.</li>
+            </ul>
+            <p>
+              Nested structs are supported by binding sublayouts or panel-hosted layouts to members. When a cell contains a nested layout
+              and the target member is a basic type, the binding logic propagates that member into the child cells automatically.
+            </p>
+          </section>
+
+          <section id="flow" class="section">
+            <h2>Control-to-Object Update Flow</h2>
+            <p>
+              User edits travel through cell helpers such as <code>_cell_update_bool</code>, <code>_cell_update_str</code>,
+              <code>_cell_update_norm32</code>, and <code>_cell_update_incr</code>. Those pass through <code>gbind.c</code>,
+              which uses the member metadata to write the new value into the bound object.
+            </p>
+            <p>
+              Before the change is finalized, the nearest layout with an object-change listener can receive
+              <code>ekGUI_EVENT_OBJCHANGE</code>. The event carries an <code>EvBind</code> payload and a <code>bool_t</code> result,
+              so the listener can inspect the modified member with <code>evbind_modify(...)</code> and veto or accept the edit.
+            </p>
+          </section>
+
+          <section id="refresh" class="section">
+            <h2>Object-to-Control Refresh</h2>
+            <p>
+              Refresh in the other direction is handled by <code>_layout_dbind_update()</code> and the internal recursive walker in
+              <code>layout.c</code>. It can update one member or the whole object, and it descends through sublayouts and panel-owned
+              layouts while respecting locally bound subobjects.
+            </p>
+            <p>
+              Binding also adapts control setup based on metadata. Examples from <code>layout.c</code> include auto-populating enum values
+              into popups or listboxes and enabling <code>edit_autoselect(...)</code> when an edit box is bound to a numeric member.
+            </p>
+          </section>
+
+          <section id="metadata" class="section">
+            <h2>Metadata-Driven Behavior</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Metadata</th>
+                  <th>Where It Comes From</th>
+                  <th>What The GUI Layer Uses It For</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Enum aliases</td>
+                  <td><code>dbind_enum(...)</code></td>
+                  <td>Generates popup/listbox labels and maps selection back to enum values.</td>
+                </tr>
+                <tr>
+                  <td>Ranges and precision</td>
+                  <td><code>dbind_range</code>, <code>dbind_precision</code>, <code>dbind_increment</code></td>
+                  <td>Normalizes sliders, numeric editors, and increment/decrement controls.</td>
+                </tr>
+                <tr>
+                  <td>Binary defaults</td>
+                  <td><code>dbind_binary(...)</code> plus defaults</td>
+                  <td>Lets image-backed members appear as <code>Image</code> values in the GUI.</td>
+                </tr>
+                <tr>
+                  <td>String filters</td>
+                  <td>DBind string member metadata</td>
+                  <td>Applied through <code>_cell_filter_str()</code> for edit validation.</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section id="examples" class="section">
+            <h2>Representative Demo Usage</h2>
+            <p>
+              <code>demo/guihello</code> shows the small-scale patterns: enum registration, member binding, and layout update notifications.
+              <code>demo/bode</code> shows the more complex case with nested parameter structs, range/precision metadata, and panel-switched views.
+            </p>
+            <p>
+              Those demos are worth reading because they reflect the intended public usage more clearly than the internals alone.
+            </p>
+          </section>
+        </article>
+      </main>
+    </div>
+
+    <aside class="toc"></aside>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

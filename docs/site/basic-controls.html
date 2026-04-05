@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Basic Controls | NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="basic-controls">
+  <div class="layout">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrap">
+      <main class="article">
+        <article class="article-card">
+          <p class="eyebrow">GUI</p>
+          <h1 class="page-title">Basic Controls</h1>
+          <p class="lead">
+            The basic control layer covers the standard form widgets: buttons, editable text fields, combos,
+            popup selectors, sliders, progress bars, and spinner-like up/down controls. These are the main native-backed
+            building blocks used throughout the demos and the higher-level layout system.
+          </p>
+
+          <section id="sources" class="section">
+            <h2>Relevant Source Files</h2>
+            <div class="source-pills">
+              <a class="pill" href="../../src/gui/button.h"><code>src/gui/button.h</code></a>
+              <a class="pill" href="../../src/gui/edit.h"><code>src/gui/edit.h</code></a>
+              <a class="pill" href="../../src/gui/combo.h"><code>src/gui/combo.h</code></a>
+              <a class="pill" href="../../src/gui/popup.h"><code>src/gui/popup.h</code></a>
+              <a class="pill" href="../../src/gui/slider.h"><code>src/gui/slider.h</code></a>
+              <a class="pill" href="../../src/gui/progress.h"><code>src/gui/progress.h</code></a>
+              <a class="pill" href="../../src/gui/updown.h"><code>src/gui/updown.h</code></a>
+              <a class="pill" href="../../src/gui/layout.c"><code>src/gui/layout.c</code></a>
+            </div>
+          </section>
+
+          <section id="buttons" class="section">
+            <h2>Action and State Controls</h2>
+            <p>
+              <code>button.h</code> exposes multiple shapes behind one type: push, check, tri-state check, radio, flat, and
+              <code>flatgle</code>. A button can carry text, alternate text, image, alternate image, tooltip, font, tag value,
+              and custom padding, then report activation through <code>button_OnClick(...)</code>.
+            </p>
+            <p>
+              The stateful variants reuse the same API surface through <code>button_state(...)</code> and <code>button_get_state(...)</code>,
+              which is why DBind enum/bool integration can map naturally into them.
+            </p>
+          </section>
+
+          <section id="text" class="section">
+            <h2>Editable Text Controls</h2>
+            <p>
+              <code>Edit</code> covers both single-line and multiline text entry. The API includes filter, change, and focus listeners,
+              text/font/alignment configuration, password mode, editable toggling, autoselect, explicit selection, placeholder text and style,
+              separate normal/focus colors, padding, and clipboard commands.
+            </p>
+            <p>
+              <code>Combo</code> combines an editable text surface with a list model. It keeps the edit-style APIs for filtering, focus,
+              placeholder, clipboard, and text selection, then adds item management and a distinct <code>OnSelect</code> event for list choices.
+            </p>
+          </section>
+
+          <section id="choice" class="section">
+            <h2>Choice Controls</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Control</th>
+                  <th>Main API Shape</th>
+                  <th>Best Fit</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>PopUp</code></td>
+                  <td>List management plus <code>popup_OnSelect</code>, tooltip, selected index, and per-item text/image.</td>
+                  <td>Fixed selection from a dropdown without free typing.</td>
+                </tr>
+                <tr>
+                  <td><code>Combo</code></td>
+                  <td>Edit-like text API plus list elements and <code>combo_OnSelect</code>.</td>
+                  <td>Hybrid input where the user can type or choose from known values.</td>
+                </tr>
+                <tr>
+                  <td><code>Button</code> groups</td>
+                  <td>Radio/check state through the shared button API.</td>
+                  <td>Compact boolean or mutually exclusive choices inside layouts.</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section id="range" class="section">
+            <h2>Range, Increment, and Status Widgets</h2>
+            <p>
+              <code>Slider</code> supports horizontal or vertical orientation, logical step count, length, tooltip, and normalized value access.
+              <code>Progress</code> focuses on display only, with explicit width, determinate value, and an undefined/running mode for busy state.
+            </p>
+            <p>
+              <code>UpDown</code> is intentionally small: it is an increment/decrement trigger that exposes a click listener and tooltip,
+              and it often works in concert with DBind numeric metadata instead of carrying its own full numeric model.
+            </p>
+          </section>
+
+          <section id="binding" class="section">
+            <h2>Binding and Layout Implications</h2>
+            <p>
+              The layout/binding layer adds some behavior automatically. When an edit box is bound to a numeric member, <code>layout.c</code>
+              enables <code>edit_autoselect(...)</code>. When a popup or listbox is bound to an enum and currently has no items,
+              the binding layer can populate the choices from DBind aliases.
+            </p>
+            <p>
+              That is why these controls remain simple at the header level: richer behavior often comes from the surrounding layout and DBind context.
+            </p>
+          </section>
+        </article>
+      </main>
+    </div>
+
+    <aside class="toc"></aside>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

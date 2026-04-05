@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Core Infrastructure | NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="core-infrastructure">
+  <div class="layout">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrap">
+      <main class="article">
+        <article class="article-card">
+          <p class="eyebrow">Core</p>
+          <h1 class="page-title">Core Infrastructure</h1>
+          <p class="lead">
+            The <code>core</code> layer is the runtime substrate under the GUI stack. It adds typed containers,
+            streams, events, DBind metadata, resource packs, strings, and higher-level filesystem helpers on top of the
+            lower-level <code>osbs</code> services.
+          </p>
+
+          <section id="sources" class="section">
+            <h2>Relevant Source Files</h2>
+            <div class="source-pills">
+              <a class="pill" href="../../src/core/coreall.h"><code>src/core/coreall.h</code></a>
+              <a class="pill" href="../../src/core/core.h"><code>src/core/core.h</code></a>
+              <a class="pill" href="../../src/core/core.cpp"><code>src/core/core.cpp</code></a>
+              <a class="pill" href="../../src/core/event.h"><code>src/core/event.h</code></a>
+              <a class="pill" href="../../src/core/dbind.h"><code>src/core/dbind.h</code></a>
+              <a class="pill" href="../../src/core/respack.h"><code>src/core/respack.h</code></a>
+              <a class="pill" href="../../src/core/hfile.h"><code>src/core/hfile.h</code></a>
+              <a class="pill" href="../../src/core/stream.h"><code>src/core/stream.h</code></a>
+            </div>
+          </section>
+
+          <section id="scope" class="section">
+            <h2>What The Core Layer Includes</h2>
+            <p>
+              <code>coreall.h</code> shows the intended scope clearly. It aggregates arrays, hash tables, buffers, clocks, dates,
+              DBind, events, heap helpers, filesystem helpers, key buffers, resource packs, regular expressions, sets, streams,
+              strings, and text filters, then pulls in <code>osbsall.h</code>.
+            </p>
+            <p>
+              So although the GUI pages get most of the attention, a substantial part of NAppGUI is actually a reusable C runtime/library layer.
+            </p>
+          </section>
+
+          <section id="startup" class="section">
+            <h2>Startup and Shutdown</h2>
+            <p>
+              <code>core_start()</code> is reference-counted. On the first user it starts <code>osbs</code>, the heap subsystem,
+              the stream subsystem, and the DBind registry, then registers built-in DBind types such as integers, reals, <code>String</code>,
+              and the <code>ArrPt</code>/<code>ArrSt</code> container families.
+            </p>
+            <p>
+              <code>core_finish()</code> unwinds that stack in reverse order when the last user exits. This pattern is repeated in the higher layers
+              like <code>draw2d</code> and <code>ogl3d</code>.
+            </p>
+          </section>
+
+          <section id="events" class="section">
+            <h2>Events and Listener Model</h2>
+            <p>
+              The event API is strongly typed by convention. A <code>Listener</code> stores an object pointer and an event handler,
+              while <code>listener_event(...)</code> and related helpers carry a numeric event type plus sender/params/result pointers and type names.
+            </p>
+            <p>
+              This same event system is reused everywhere: GUI clicks, window close requests, draw callbacks, theme changes, idle work,
+              and DBind object-change notifications all share the same listener/event machinery.
+            </p>
+          </section>
+
+          <section id="dbind" class="section">
+            <h2>DBind and Runtime Type Metadata</h2>
+            <p>
+              DBind is part of core, not GUI. That is why serialization, comparison, default values, member ranges, and typed container handling
+              can work independently of the widget layer. The GUI pages build on this runtime metadata, but the registry itself is a generic subsystem.
+            </p>
+            <p>
+              In practice, DBind is one of the most distinctive parts of the project because it gives plain C structs a reflection-like metadata layer.
+            </p>
+          </section>
+
+          <section id="resources" class="section">
+            <h2>Resources, Files, and Streams</h2>
+            <p>
+              Resource packs, filesystem helpers, and streams all live in the core layer. <code>ResPack</code> resolves text and binary payloads,
+              <code>hfile</code> adds high-level directory/file convenience functions, and <code>Stream</code> provides a unified read/write/tokenization surface
+              for memory, files, and sockets.
+            </p>
+            <p>
+              That is why higher layers such as <code>gui</code>, <code>encode</code>, and <code>inet</code> can share the same I/O conventions instead of each inventing their own.
+            </p>
+          </section>
+        </article>
+      </main>
+    </div>
+
+    <aside class="toc"></aside>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

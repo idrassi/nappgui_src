@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Architecture Notes | NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="architecture-notes">
+  <div class="layout">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrap">
+      <main class="article">
+        <article class="article-card">
+          <p class="eyebrow">Foundations</p>
+          <h1 class="page-title">Architecture Notes</h1>
+          <p class="lead">
+            This page is the code-grounded architecture summary for the current <code>nappgui_src</code> checkout.
+            It explains the real library graph, startup path, backend seam, layout model, data binding path,
+            and platform/runtime boundaries as they exist in the repository today.
+          </p>
+
+          <div class="meta-grid">
+            <div class="meta-item">
+              <span>Verified Commit</span>
+              <strong><code>2b0099603323ae7a35b8ee6998d35af94f5b16c8</code></strong>
+            </div>
+            <div class="meta-item">
+              <span>Commit Date</span>
+              <strong><code>2026-03-17</code></strong>
+            </div>
+            <div class="meta-item">
+              <span>Version</span>
+              <strong><code>1.6.1</code></strong>
+            </div>
+            <div class="meta-item">
+              <span>Scope</span>
+              <strong><code>core</code> + <code>draw2d</code> + <code>gui</code> + <code>osgui</code> + <code>osapp</code></strong>
+            </div>
+          </div>
+
+          <div class="callout warn">
+            Every architectural statement on this page was verified directly against the checked-out source tree.
+            The local repository state is the source of truth for this document.
+          </div>
+
+          <section id="sources" class="section">
+            <h2>Relevant Source Files</h2>
+            <div class="source-pills">
+              <a class="pill" href="../../README.md"><code>README.md</code></a>
+              <a class="pill" href="../../src/nappgui.h"><code>src/nappgui.h</code></a>
+              <a class="pill" href="../../src/gui/guiall.h"><code>src/gui/guiall.h</code></a>
+              <a class="pill" href="../../CMakeTargets.cmake"><code>CMakeTargets.cmake</code></a>
+              <a class="pill" href="../../src/osapp/osapp.c"><code>src/osapp/osapp.c</code></a>
+              <a class="pill" href="../../src/osapp/osmain.h"><code>src/osapp/osmain.h</code></a>
+              <a class="pill" href="../../src/draw2d/guictx.hxx"><code>src/draw2d/guictx.hxx</code></a>
+              <a class="pill" href="../../src/osgui/osguictx.c"><code>src/osgui/osguictx.c</code></a>
+              <a class="pill" href="../../src/gui/layout.c"><code>src/gui/layout.c</code></a>
+              <a class="pill" href="../../src/gui/panel.c"><code>src/gui/panel.c</code></a>
+              <a class="pill" href="../../src/gui/window.c"><code>src/gui/window.c</code></a>
+              <a class="pill" href="../../src/core/dbind.h"><code>src/core/dbind.h</code></a>
+              <a class="pill" href="../../src/gui/gbind.c"><code>src/gui/gbind.c</code></a>
+              <a class="pill" href="../../prj/NAppTarget.cmake"><code>prj/NAppTarget.cmake</code></a>
+              <a class="pill" href="../../prj/version.txt"><code>prj/version.txt</code></a>
+            </div>
+          </section>
+
+          <section id="scope" class="section">
+            <h2>What NAppGUI Is</h2>
+            <p>
+              NAppGUI is a cross-platform C SDK for native desktop applications on Windows, macOS, and Linux.
+              At the public include level, <code>src/nappgui.h</code> exposes the application bootstrap surface from
+              <code>osapp</code> and the high-level widget surface from <code>gui</code>.
+            </p>
+            <p>
+              The repository is not just one GUI library. It is a stack of runtime, drawing, GUI, backend,
+              packaging, and helper libraries plus a build-time resource compiler. That distinction matters because
+              the public API feels unified while the internal module graph is deliberately split.
+            </p>
+            <ul class="bullet-list">
+              <li><strong>Base/runtime:</strong> <code>sewer</code>, <code>osbs</code>, <code>core</code></li>
+              <li><strong>Graphics and GUI:</strong> <code>geom2d</code>, <code>draw2d</code>, <code>osgui</code>, <code>gui</code>, <code>osapp</code></li>
+              <li><strong>Optional support:</strong> <code>encode</code>, <code>inet</code>, <code>ogl3d</code></li>
+              <li><strong>Build-time tooling:</strong> <code>tools/nrc</code></li>
+            </ul>
+            <div class="sources">
+              <strong>Sources</strong>
+              <ul class="source-list">
+                <li><a href="../../src/nappgui.h"><code>src/nappgui.h</code></a></li>
+                <li><a href="../../src/gui/guiall.h"><code>src/gui/guiall.h</code></a></li>
+                <li><a href="../../CMakeTargets.cmake"><code>CMakeTargets.cmake</code></a></li>
+                <li><a href="../../README.md"><code>README.md</code></a></li>
+              </ul>
+            </div>
+          </section>
+
+          <section id="stack" class="section">
+            <h2>Real Library Stack</h2>
+            <p>
+              The checked-in CMake targets show a layered dependency chain rather than one monolithic framework.
+              The important edge is that <code>gui</code> does not directly depend on <code>osgui</code>;
+              both depend on <code>draw2d</code>, and <code>osapp</code> is the layer that joins them.
+            </p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Library</th>
+                  <th>Main Role</th>
+                  <th>Depends On</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>sewer</code></td>
+                  <td>Low-level utilities, assertions, memory helpers, and support code.</td>
+                  <td>None</td>
+                </tr>
+                <tr>
+                  <td><code>osbs</code></td>
+                  <td>OS basic services.</td>
+                  <td><code>sewer</code></td>
+                </tr>
+                <tr>
+                  <td><code>core</code></td>
+                  <td>Containers, heap, streams, events, DBind, and resource packs.</td>
+                  <td><code>osbs</code></td>
+                </tr>
+                <tr>
+                  <td><code>geom2d</code></td>
+                  <td>Geometry primitives and math.</td>
+                  <td><code>core</code></td>
+                </tr>
+                <tr>
+                  <td><code>draw2d</code></td>
+                  <td>Drawing types, images, fonts, and the base <code>GuiCtx</code> interface.</td>
+                  <td><code>geom2d</code></td>
+                </tr>
+                <tr>
+                  <td><code>osgui</code></td>
+                  <td>Native GUI backend implementation.</td>
+                  <td><code>draw2d</code></td>
+                </tr>
+                <tr>
+                  <td><code>gui</code></td>
+                  <td>High-level GUI composition and controls.</td>
+                  <td><code>draw2d</code></td>
+                </tr>
+                <tr>
+                  <td><code>osapp</code></td>
+                  <td>Application bootstrap and platform runloop integration.</td>
+                  <td><code>osgui</code>, <code>gui</code></td>
+                </tr>
+                <tr>
+                  <td><code>encode</code></td>
+                  <td>Serialization and encoding helpers.</td>
+                  <td><code>core</code></td>
+                </tr>
+                <tr>
+                  <td><code>inet</code></td>
+                  <td>HTTP and network layer.</td>
+                  <td><code>encode</code></td>
+                </tr>
+                <tr>
+                  <td><code>ogl3d</code></td>
+                  <td>Platform OpenGL context management.</td>
+                  <td><code>sewer</code></td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="sources">
+              <strong>Sources</strong>
+              <ul class="source-list">
+                <li><a href="../../CMakeTargets.cmake"><code>CMakeTargets.cmake</code></a></li>
+                <li><a href="../../src/draw2d/guictx.h"><code>src/draw2d/guictx.h</code></a></li>
+                <li><a href="../../src/osgui/osguictx.c"><code>src/osgui/osguictx.c</code></a></li>
+                <li><a href="../../prj/nappgui-config.cmake"><code>prj/nappgui-config.cmake</code></a></li>
+              </ul>
+            </div>
+          </section>
+
+          <section id="bootstrap" class="section">
+            <h2>Public Bootstrap and Runtime Ownership</h2>
+            <p>
+              The canonical desktop application shape is the <code>osmain(...)</code> macro family, not a hand-written
+              sequence ending in <code>osapp_run()</code>. The demos define creation and destruction callbacks,
+              include <code>osapp/osmain.h</code>, and end the translation unit with <code>osmain(...)</code>.
+            </p>
+            <p>
+              At runtime, <code>osmain_imp</code> performs the real bootstrap: <code>osgui_start()</code>,
+              <code>gui_start()</code>, native GUI context creation through <code>osguictx()</code>,
+              <code>guictx_set_current(...)</code>, and entry into the internal <code>_osapp_run(...)</code> loop.
+              Shutdown unwinds in the reverse order through <code>gui_finish()</code> and <code>osgui_finish()</code>.
+            </p>
+            <ol>
+              <li>Write <code>i_create</code> and <code>i_destroy</code> callbacks.</li>
+              <li>Include <code>osapp/osmain.h</code>.</li>
+              <li>Use <code>osmain(i_create, i_destroy, "", App)</code>.</li>
+              <li>Let the runtime own backend startup, context install, runloop entry, and shutdown.</li>
+            </ol>
+            <div class="sources">
+              <strong>Sources</strong>
+              <ul class="source-list">
+                <li><a href="../../demo/hello/main.c"><code>demo/hello/main.c</code></a></li>
+                <li><a href="../../src/osapp/osmain.h"><code>src/osapp/osmain.h</code></a></li>
+                <li><a href="../../src/osapp/osmain_win.h"><code>src/osapp/osmain_win.h</code></a></li>
+                <li><a href="../../src/osapp/osmain_osx.h"><code>src/osapp/osmain_osx.h</code></a></li>
+                <li><a href="../../src/osapp/osmain_gtk.h"><code>src/osapp/osmain_gtk.h</code></a></li>
+                <li><a href="../../src/osapp/osapp.c"><code>src/osapp/osapp.c</code></a></li>
+                <li><a href="../../src/osapp/osapp.h"><code>src/osapp/osapp.h</code></a></li>
+              </ul>
+            </div>
+          </section>
+
+          <section id="guictx" class="section">
+            <h2>GuiCtx: The Backend Abstraction Layer</h2>
+            <p>
+              <code>GuiCtx</code> is the key seam that explains how the high-level <code>gui</code> library avoids a direct
+              dependency on one platform backend. The interface lives under <code>draw2d</code> and consists of function-pointer
+              tables for control creation, sizing, windows, menus, cursors, drawing, and event/listener hooks.
+            </p>
+            <p>
+              In practice this is an internal backend contract, not a standalone public subsystem. The repository currently
+              ships one concrete provider: the native backend created by <code>osguictx()</code> in <code>osgui</code>.
+              References to possible future alternative contexts are architectural direction, not second shipped backends.
+            </p>
+            <ul class="bullet-list">
+              <li><strong><code>gui</code> owns composition:</strong> widget trees, layouts, and higher-level behavior.</li>
+              <li><strong><code>GuiCtx</code> owns backend hooks:</strong> native controls, sizing, window operations, and event bridge points.</li>
+              <li><strong><code>osgui</code> supplies the implementation:</strong> the real shipped context is the native one.</li>
+            </ul>
+            <div class="sources">
+              <strong>Sources</strong>
+              <ul class="source-list">
+                <li><a href="../../src/draw2d/guictx.hxx"><code>src/draw2d/guictx.hxx</code></a></li>
+                <li><a href="../../src/draw2d/guictx.h"><code>src/draw2d/guictx.h</code></a></li>
+                <li><a href="../../src/draw2d/guictx.c"><code>src/draw2d/guictx.c</code></a></li>
+                <li><a href="../../src/osgui/osguictx.c"><code>src/osgui/osguictx.c</code></a></li>
+                <li><a href="../../src/osgui/osguictx.h"><code>src/osgui/osguictx.h</code></a></li>
+              </ul>
+            </div>
+          </section>
+
+          <section id="composition" class="section">
+            <h2>UI Composition Model</h2>
+            <h3>Layout</h3>
+            <p>
+              <code>Layout</code> is the core recursive composition structure. Each cell can hold either a
+              <code>GuiComponent</code> or a nested <code>Layout</code>, and the internal state tracks row and column dimensions,
+              cell padding, alignment, visibility, background/stroke colors, DBind metadata, and bound objects.
+            </p>
+            <p>
+              The internal comments above <code>_layout_compose()</code> describe a two-phase sizing model:
+              <code>_layout_natural()</code> computes natural sizes and <code>_layout_expand()</code> distributes the
+              available space. After composition, <code>_layout_locate()</code> applies the final geometry to controls and sublayouts.
+            </p>
+            <h3>Panel</h3>
+            <p>
+              A <code>Panel</code> is a layout host, not just a single-layout wrapper. Internally it owns
+              <code>ArrPt(Layout) *layouts</code> plus <code>visible_layout</code> and <code>active_layout</code>,
+              which allows one panel to keep multiple layout trees and switch the visible one.
+            </p>
+            <h3>Window</h3>
+            <p>
+              <code>window_panel(...)</code> wraps the supplied panel in an internal <code>1x1</code> layout and installs that
+              as the window's root layout. Resize behavior then flows through the layout engine:
+              the sizing event composes the constrained result size, and the size event locates the layout tree.
+            </p>
+            <div class="sources">
+              <strong>Sources</strong>
+              <ul class="source-list">
+                <li><a href="../../src/gui/layout.c"><code>src/gui/layout.c</code></a></li>
+                <li><a href="../../src/gui/layout.h"><code>src/gui/layout.h</code></a></li>
+                <li><a href="../../src/gui/panel.c"><code>src/gui/panel.c</code></a></li>
+                <li><a href="../../src/gui/panel.h"><code>src/gui/panel.h</code></a></li>
+                <li><a href="../../src/gui/window.c"><code>src/gui/window.c</code></a></li>
+              </ul>
+            </div>
+          </section>
+
+          <section id="events" class="section">
+            <h2>Events and Data Binding</h2>
+            <h3>Event System</h3>
+            <p>
+              NAppGUI uses a lightweight typed listener model from <code>core/event.h</code> and <code>core/event.cpp</code>.
+              Events carry sender, parameter, result, and type information, and debug builds track type names and assert correctness.
+              This is not a generic reactive graph; it is a callback system used broadly across the GUI and runtime layers.
+            </p>
+            <h3>DBind and Layout Binding</h3>
+            <p>
+              DBind is runtime metadata for structs, enums, binary payloads, and containers. The GUI layer builds on it through
+              <code>layout_dbind(...)</code>, <code>layout_dbind_obj(...)</code>, <code>cell_dbind(...)</code>, and
+              <code>layout_dbind_update(...)</code> to connect controls and layout cells to object fields.
+            </p>
+            <p>
+              When a bound control edits a field, <code>gbind.c</code> raises <code>ekGUI_EVENT_OBJCHANGE</code>.
+              Handlers can inspect the pending edit through <code>EvBind</code>, accept or reject it, and trigger a revert when needed.
+              Accepted changes then refresh the affected bound controls through the layout binding machinery.
+            </p>
+            <div class="sources">
+              <strong>Sources</strong>
+              <ul class="source-list">
+                <li><a href="../../src/core/event.h"><code>src/core/event.h</code></a></li>
+                <li><a href="../../src/core/event.cpp"><code>src/core/event.cpp</code></a></li>
+                <li><a href="../../src/core/dbind.h"><code>src/core/dbind.h</code></a></li>
+                <li><a href="../../src/core/dbind.c"><code>src/core/dbind.c</code></a></li>
+                <li><a href="../../src/gui/layout.h"><code>src/gui/layout.h</code></a></li>
+                <li><a href="../../src/gui/layout.c"><code>src/gui/layout.c</code></a></li>
+                <li><a href="../../src/gui/cell.h"><code>src/gui/cell.h</code></a></li>
+                <li><a href="../../src/gui/gbind.c"><code>src/gui/gbind.c</code></a></li>
+                <li><a href="../../demo/guihello/guibind.c"><code>demo/guihello/guibind.c</code></a></li>
+                <li><a href="../../demo/guihello/layoutbind.c"><code>demo/guihello/layoutbind.c</code></a></li>
+              </ul>
+            </div>
+          </section>
+
+          <section id="controls" class="section">
+            <h2>Native Controls vs Custom-Drawn Controls</h2>
+            <p>
+              NAppGUI is not only a thin wrapper over native widgets. Many controls map directly onto platform controls in
+              <code>osgui</code>, including common buttons, edits, combos, popups, sliders, progress bars, and windows.
+            </p>
+            <p>
+              Several visible controls are instead implemented as custom <code>View</code>-based widgets using the
+              <code>ekGUI_TYPE_CUSTOMVIEW</code> backend slot. Verified examples in this checkout include
+              <code>label</code>, <code>imageview</code>, <code>listbox</code>, and <code>tableview</code>.
+              That distinction matters when documenting behavior, portability, and styling expectations.
+            </p>
+            <div class="sources">
+              <strong>Sources</strong>
+              <ul class="source-list">
+                <li><a href="../../src/gui/view.c"><code>src/gui/view.c</code></a></li>
+                <li><a href="../../src/gui/label.c"><code>src/gui/label.c</code></a></li>
+                <li><a href="../../src/gui/imageview.c"><code>src/gui/imageview.c</code></a></li>
+                <li><a href="../../src/gui/listbox.c"><code>src/gui/listbox.c</code></a></li>
+                <li><a href="../../src/gui/tableview.c"><code>src/gui/tableview.c</code></a></li>
+              </ul>
+            </div>
+          </section>
+
+          <section id="platforms" class="section">
+            <h2>Platform Backends</h2>
+            <h3>Windows</h3>
+            <p>
+              The current Windows backend is Win32 plus GDI and GDI+ drawing. This checkout contains extensive
+              <code>Gdiplus::</code> usage and explicit comments describing GDI/GDI+ paths rather than a Direct2D renderer.
+              Optional web support uses WebView2 when enabled.
+            </p>
+            <h3>macOS</h3>
+            <p>
+              The macOS backend is native Cocoa/AppKit. Drawing lives in the Objective-C <code>draw2d</code> path,
+              and optional web content support uses <code>WKWebView</code> when the deployment target and build options allow it.
+            </p>
+            <h3>Linux</h3>
+            <p>
+              The Linux backend uses GTK3 for the native widget layer. Drawing and text go through the GTK, Cairo, and Pango path,
+              and optional web support uses WebKitGTK when found at configure time.
+            </p>
+            <div class="sources">
+              <strong>Sources</strong>
+              <ul class="source-list">
+                <li><a href="../../src/draw2d/win/draw_win.cpp"><code>src/draw2d/win/draw_win.cpp</code></a></li>
+                <li><a href="../../src/osgui/win/osgui_win.cpp"><code>src/osgui/win/osgui_win.cpp</code></a></li>
+                <li><a href="../../src/osgui/win/osview.cpp"><code>src/osgui/win/osview.cpp</code></a></li>
+                <li><a href="../../src/osgui/win/osweb.cpp"><code>src/osgui/win/osweb.cpp</code></a></li>
+                <li><a href="../../src/draw2d/osx/draw_osx.m"><code>src/draw2d/osx/draw_osx.m</code></a></li>
+                <li><a href="../../src/osgui/osx/osweb.m"><code>src/osgui/osx/osweb.m</code></a></li>
+                <li><a class="pill" href="../../src/draw2d/gtk/draw_gtk.c"><code>src/draw2d/gtk/draw_gtk.c</code></a></li>
+                <li><a href="../../prj/NAppCompilers.cmake"><code>prj/NAppCompilers.cmake</code></a></li>
+                <li><a href="../../prj/NAppUtils.cmake"><code>prj/NAppUtils.cmake</code></a></li>
+              </ul>
+            </div>
+          </section>
+
+          <section id="resources" class="section">
+            <h2>Build, Packaging, and Resources</h2>
+            <p>
+              The root build uses CMake and exposes the main options <code>NAPPGUI_SHARED</code>, <code>NAPPGUI_DEMO</code>,
+              and <code>NAPPGUI_WEB</code>. The tree also includes the <code>nrc</code> resource compiler under
+              <code>tools/nrc</code>, which the build invokes to generate embedded resource code and, in packed mode, runtime bundles.
+            </p>
+            <p>
+              Resource handling supports two delivery modes: embedded resources compiled into generated C code and packed resource
+              bundles loaded at runtime. The GUI layer exposes registration through <code>gui_respack(...)</code> and language
+              selection through <code>gui_language(...)</code>.
+            </p>
+            <p>
+              One packaging detail is easy to miss in the exported CMake config: <code>NAPPGUI_LIBRARIES</code> covers the main
+              application stack, but not every optional repository target. In this checkout, <code>inet</code> and <code>ogl3d</code>
+              exist as build targets without being part of that exported convenience variable.
+            </p>
+            <div class="sources">
+              <strong>Sources</strong>
+              <ul class="source-list">
+                <li><a href="../../CMakeLists.txt"><code>CMakeLists.txt</code></a></li>
+                <li><a href="../../prj/NAppTarget.cmake"><code>prj/NAppTarget.cmake</code></a></li>
+                <li><a href="../../prj/NAppUtils.cmake"><code>prj/NAppUtils.cmake</code></a></li>
+                <li><a href="../../prj/nappgui-config.cmake"><code>prj/nappgui-config.cmake</code></a></li>
+                <li><a href="../../src/core/respack.c"><code>src/core/respack.c</code></a></li>
+                <li><a href="../../src/gui/gui.c"><code>src/gui/gui.c</code></a></li>
+                <li><a href="../../tools/nrc"><code>tools/nrc</code></a></li>
+              </ul>
+            </div>
+          </section>
+
+          <section id="verified-points" class="section">
+            <h2>Key Verified Architecture Points</h2>
+            <ul class="bullet-list">
+              <li><code>Panel</code> can host multiple layouts and switch the visible one.</li>
+              <li><code>window_panel(...)</code> wraps the panel in an internal <code>1x1</code> layout.</li>
+              <li><code>gui</code> does not directly depend on <code>osgui</code>; both depend on <code>draw2d</code>, and <code>osapp</code> joins them.</li>
+              <li>The canonical desktop app entry is <code>osmain(...)</code>, while <code>_osapp_run(...)</code> is internal.</li>
+              <li>The Windows backend in this checkout uses GDI/GDI+, not Direct2D.</li>
+              <li>The shipped <code>GuiCtx</code> provider is the native <code>osgui</code> implementation.</li>
+              <li>The repository includes <code>encode</code>, <code>inet</code>, <code>ogl3d</code>, and the <code>nrc</code> tool as practical architecture subsystems.</li>
+              <li>Several visible controls are custom-drawn <code>View</code>-based widgets rather than native controls.</li>
+              <li>The resource system is a first-class subsystem with embedded and packed modes.</li>
+            </ul>
+          </section>
+
+          <section id="reading-order" class="section">
+            <h2>Recommended Reading Order In The Source Tree</h2>
+            <p>
+              For a fast codebase walkthrough, this order gives a reliable mental model from public surface down to runtime and tooling:
+            </p>
+            <ol>
+              <li><code>src/nappgui.h</code></li>
+              <li><code>demo/hello/main.c</code></li>
+              <li><code>src/osapp/osapp.h</code> and <code>src/osapp/osapp.c</code></li>
+              <li><code>src/draw2d/guictx.hxx</code> and <code>src/osgui/osguictx.c</code></li>
+              <li><code>src/gui/layout.c</code>, <code>src/gui/panel.c</code>, and <code>src/gui/window.c</code></li>
+              <li><code>src/core/event.h</code>, <code>src/core/dbind.h</code>, <code>src/gui/layout.h</code>, and <code>src/gui/gbind.c</code></li>
+              <li><code>prj/NAppTarget.cmake</code> and <code>tools/nrc</code></li>
+            </ol>
+            <p>
+              That path moves from public API, to actual app startup, to backend abstraction, to layout/composition,
+              to binding/events, and finally to build/resource tooling.
+            </p>
+          </section>
+        </article>
+      </main>
+    </div>
+
+    <aside class="toc"></aside>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

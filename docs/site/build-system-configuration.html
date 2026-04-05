@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Build System and Configuration | NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="build-system-configuration">
+  <div class="layout">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrap">
+      <main class="article">
+        <article class="article-card">
+          <p class="eyebrow">Foundations</p>
+          <h1 class="page-title">Build System and Configuration</h1>
+          <p class="lead">
+            NAppGUI ships a fairly opinionated CMake stack. It configures compiler/toolkit settings,
+            bootstraps the <code>nrc</code> resource compiler, scans platform-specific source trees,
+            and exports an installable package for downstream applications.
+          </p>
+
+          <section id="sources" class="section">
+            <h2>Relevant Source Files</h2>
+            <div class="source-pills">
+              <a class="pill" href="../../CMakeLists.txt"><code>CMakeLists.txt</code></a>
+              <a class="pill" href="../../CMakeTargets.cmake"><code>CMakeTargets.cmake</code></a>
+              <a class="pill" href="../../prj/NAppCompilers.cmake"><code>prj/NAppCompilers.cmake</code></a>
+              <a class="pill" href="../../prj/NAppUtils.cmake"><code>prj/NAppUtils.cmake</code></a>
+              <a class="pill" href="../../prj/NAppTarget.cmake"><code>prj/NAppTarget.cmake</code></a>
+              <a class="pill" href="../../prj/NAppGenerateTools.cmake"><code>prj/NAppGenerateTools.cmake</code></a>
+              <a class="pill" href="../../prj/NAppProject.cmake"><code>prj/NAppProject.cmake</code></a>
+              <a class="pill" href="../../prj/nappgui-config.cmake"><code>prj/nappgui-config.cmake</code></a>
+            </div>
+          </section>
+
+          <section id="entry" class="section">
+            <h2>Top-Level Entry and Options</h2>
+            <p>
+              The root <code>CMakeLists.txt</code> defines three major options:
+              <code>NAPPGUI_SHARED</code>, <code>NAPPGUI_DEMO</code>, and <code>NAPPGUI_WEB</code>.
+              It then loads the version script, compiler configuration, utility helpers, checks WebView support,
+              generates the <code>nrc</code> tool, and finally expands the target list from <code>CMakeTargets.cmake</code>.
+            </p>
+            <p>
+              In other words, the build is not just a list of <code>add_subdirectory</code> calls. There is a fixed configure pipeline
+              that computes toolchain facts and build options first.
+            </p>
+          </section>
+
+          <section id="targets" class="section">
+            <h2>Target Discovery and Generation</h2>
+            <p>
+              <code>nap_target(...)</code> in <code>NAppTarget.cmake</code> recursively scans each module directory,
+              filters platform/toolkit-specific subdirectories like <code>win</code>, <code>osx</code>, <code>gtk</code>, and <code>linux</code>,
+              collects public headers, and then creates either a static/shared library or a platform-specific executable target.
+            </p>
+            <p>
+              The module list itself comes from <code>CMakeTargets.cmake</code>. That is the real build graph source of truth for the shipped libraries,
+              demos, and the <code>tools/nrc</code> resource compiler.
+            </p>
+          </section>
+
+          <section id="resources" class="section">
+            <h2>Resource Pipeline and NRC</h2>
+            <p>
+              Resource handling is built into the target helpers. <code>nap_generate_tools()</code> first configures and builds the separate
+              <code>tools</code> project so that <code>nrc</code> exists before the main configure/generate process continues.
+            </p>
+            <p>
+              Later, <code>nap_resource_packs(...)</code> walks <code>res/</code> folders, adds them to the IDE view, and optionally compiles each
+              resource pack either as generated C/H sources (<code>NRC_EMBEDDED</code>) or as packed resources copied near the app (<code>NRC_PACKED</code>).
+              Windows manifests and icons, macOS bundle icons, and Linux desktop icons are all handled in the same layer.
+            </p>
+          </section>
+
+          <section id="platforms" class="section">
+            <h2>Compiler and Platform Configuration</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Platform</th>
+                  <th>Main Decisions Made By CMake</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Windows</td>
+                  <td>Detects architecture, configures MSVC/GCC/Clang flags, Unicode defines, runtime library model, and Win32 import/export settings.</td>
+                </tr>
+                <tr>
+                  <td>macOS</td>
+                  <td>Derives the base SDK, deployment target, architecture, Cocoa framework paths, and adds <code>UniformTypeIdentifiers</code> when deployment target is newer than 11.</td>
+                </tr>
+                <tr>
+                  <td>Linux</td>
+                  <td>Detects distro/toolchain, forces a toolkit choice through <code>CMAKE_TOOLKIT</code>, and currently supports GTK3 as the native GUI stack.</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section id="webview" class="section">
+            <h2>WebView Gating</h2>
+            <p>
+              <code>nap_check_webview_support()</code> decides whether the build can enable browser widgets. The rules are platform-specific:
+              Windows requires MSVC 19+ and excludes MinGW, macOS requires a deployment target above <code>10.9.9999</code>,
+              and Linux requires a matching WebKitGTK package.
+            </p>
+            <p>
+              When the check succeeds, <code>NAPPGUI_WEB_SUPPORT</code> is added to the <code>osgui</code> target and the right system libraries
+              are linked. That means the public <code>webview</code> API is always present, but backend behavior depends on compile-time capability.
+            </p>
+          </section>
+
+          <section id="helpers" class="section">
+            <h2>Project Helpers and Installed Package</h2>
+            <p>
+              <code>NAppProject.cmake</code> provides scaffolding helpers for desktop apps, command apps, and new libraries. Those helpers can create
+              starter sources and resource folders, then call <code>nap_desktop_app</code>, <code>nap_command_app</code>, or <code>nap_library</code>.
+            </p>
+            <p>
+              The installed package exports <code>nappgui-targets.cmake</code>, generated define/option files, and a <code>nappgui-config.cmake</code>
+              that exposes <code>NAPPGUI_LIBRARIES</code>. In this checkout, that exported list includes <code>encode</code> but not <code>inet</code> or <code>ogl3d</code>.
+            </p>
+          </section>
+        </article>
+      </main>
+    </div>
+
+    <aside class="toc"></aside>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NRC Resource Compiler | NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="nrc-resource-compiler">
+  <div class="layout">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrap">
+      <main class="article">
+        <article class="article-card">
+          <p class="eyebrow">Services and Tools</p>
+          <h1 class="page-title">NRC Resource Compiler</h1>
+          <p class="lead">
+            <code>nrc</code> is the repo's resource compiler. It turns per-target <code>res/</code> directories into generated C sources
+            or external packed <code>.res</code> files, preserving localized message overrides and producing the <code>ResPack</code>
+            entry points consumed at runtime by <code>core/respack.c</code>.
+          </p>
+
+          <section id="sources" class="section">
+            <h2>Relevant Source Files</h2>
+            <div class="source-pills">
+              <a class="pill" href="../../tools/CMakeLists.txt"><code>tools/CMakeLists.txt</code></a>
+              <a class="pill" href="../../tools/nrc/CMakeLists.txt"><code>tools/nrc/CMakeLists.txt</code></a>
+              <a class="pill" href="../../tools/nrc/nrc.c"><code>tools/nrc/nrc.c</code></a>
+              <a class="pill" href="../../tools/nrc/nrc.ixx"><code>tools/nrc/nrc.ixx</code></a>
+              <a class="pill" href="../../tools/nrc/nrclib.c"><code>tools/nrc/nrclib.c</code></a>
+              <a class="pill" href="../../tools/nrc/resgen.c"><code>tools/nrc/resgen.c</code></a>
+              <a class="pill" href="../../tools/nrc/msgparser.c"><code>tools/nrc/msgparser.c</code></a>
+              <a class="pill" href="../../prj/NAppGenerateTools.cmake"><code>prj/NAppGenerateTools.cmake</code></a>
+              <a class="pill" href="../../prj/NAppTarget.cmake"><code>prj/NAppTarget.cmake</code></a>
+              <a class="pill" href="../../src/core/respack.c"><code>src/core/respack.c</code></a>
+              <a class="pill" href="../../demo/products/res/res_products/strings.msg"><code>demo/products/res/res_products/strings.msg</code></a>
+              <a class="pill" href="../../demo/die/res/res_die/es_es/strings.msg"><code>demo/die/res/res_die/es_es/strings.msg</code></a>
+            </div>
+          </section>
+
+          <section id="role" class="section">
+            <h2>Role In The Build Graph</h2>
+            <p>
+              <code>nrc</code> is built as a standalone command app under <code>tools/nrc</code>. The tools super-build in
+              <code>tools/CMakeLists.txt</code> compiles <code>sewer</code>, <code>osbs</code>, <code>core</code>, and then the <code>nrc</code> executable
+              in a separate Debug-only tools tree.
+            </p>
+            <p>
+              When a target uses <code>NRC_EMBEDDED</code> or <code>NRC_PACKED</code>, <code>nap_generate_tools()</code> first makes sure a local
+              <code>nrc</code> binary exists under <code>${CMAKE_BINARY_DIR}/tools/build</code>. Later, <code>nap_resource_packs(...)</code> invokes that
+              executable once for each immediate resource-pack directory under the target's <code>res/</code> folder.
+            </p>
+          </section>
+
+          <section id="layout" class="section">
+            <h2>Resource Directory Contract</h2>
+            <p>
+              The build system treats each immediate subdirectory of a target-local <code>res/</code> folder as one resource pack. Real examples in this
+              checkout include <code>res_guihello</code>, <code>res_products</code>, and <code>res_htjson</code>.
+            </p>
+            <p>
+              Localized overrides live one level deeper. For example, <code>demo/products/res/res_products/ja_JP</code> and
+              <code>demo/die/res/res_die/es_es</code> are locale directories under a pack. Outside the packs themselves, the same top-level <code>res/</code>
+              folder may also hold app icons, <code>license.txt</code>, and <code>pack.txt</code>, which CMake treats specially for packaging and installation.
+            </p>
+          </section>
+
+          <section id="types" class="section">
+            <h2>What Counts As A Resource</h2>
+            <p>
+              The compiler recognizes three runtime categories:
+            </p>
+            <ul class="bullet-list">
+              <li><strong>Message files:</strong> <code>.msg</code> files become text resources.</li>
+              <li><strong>Image files:</strong> <code>.png</code>, <code>.jpg</code>, <code>.gif</code>, and <code>.bmp</code> are tagged as image resources.</li>
+              <li><strong>Generic files:</strong> every other extension is still accepted and treated as a generic file resource.</li>
+            </ul>
+            <p>
+              So the resource compiler is permissive by default. It does not require a whitelist beyond the handful of extensions that deserve image-specific typing.
+            </p>
+          </section>
+
+          <section id="messages" class="section">
+            <h2>Message File Syntax And Localization Rules</h2>
+            <p>
+              <code>msgparser.c</code> accepts UTF-8 text with an optional BOM, skips whitespace, supports both <code>//</code> and
+              <code>/* ... */</code> comments, and parses one message per logical line. Each entry begins with an uppercase-or-underscore identifier,
+              optionally followed by more uppercase letters, underscores, or digits, and the rest of the line becomes the message text.
+            </p>
+            <p>
+              Localization is anchored on the global pack. Global <code>.msg</code> files define the canonical set of message IDs. A localized
+              <code>.msg</code> file can override those IDs, but it does not create new ones. If a localized file references an ID that does not exist globally,
+              <code>nrc</code> emits a warning; if a global message has no localized counterpart, it emits a warning for that omission too.
+            </p>
+          </section>
+
+          <section id="outputs" class="section">
+            <h2>Embedded Versus Packed Output</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Mode</th>
+                  <th>CLI Option</th>
+                  <th>Generated Files</th>
+                  <th>Runtime Entry Point</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Embedded</td>
+                  <td><code>-dc</code></td>
+                  <td><code>&lt;pack&gt;.h</code> and <code>&lt;pack&gt;.c</code></td>
+                  <td><code>respack_embedded("&lt;pack&gt;")</code></td>
+                </tr>
+                <tr>
+                  <td>Packed</td>
+                  <td><code>-dp</code></td>
+                  <td><code>&lt;pack&gt;.h</code>, <code>&lt;pack&gt;.c</code>, and <code>&lt;pack&gt;.res</code></td>
+                  <td><code>respack_packed("&lt;pack&gt;", locale)</code></td>
+                </tr>
+              </tbody>
+            </table>
+            <p>
+              In both modes the header exports one <code>ResId</code> per resource plus a function named <code>&lt;pack&gt;_respack(const char_t *locale)</code>.
+              Resource IDs are not enums; they are generated strings with the form <code>N23R3C75::&lt;pack&gt;::&lt;index&gt;</code>.
+            </p>
+          </section>
+
+          <section id="generation" class="section">
+            <h2>What The Generator Actually Emits</h2>
+            <p>
+              Embedded mode writes the full payload into C source: messages become escaped string literals and binary resources become byte arrays.
+              For each locale, the generated <code>&lt;pack&gt;_respack(...)</code> function chooses a localized override when available and otherwise falls back
+              to the global resource.
+            </p>
+            <p>
+              Packed mode writes the same logical data into a binary <code>.res</code> file. The companion C file becomes a thin stub that only defines
+              the <code>ResId</code> values and forwards the pack load to <code>respack_packed(...)</code>.
+            </p>
+          </section>
+
+          <section id="runtime" class="section">
+            <h2>Runtime Loading Contract</h2>
+            <p>
+              The runtime half lives in <code>src/core/respack.c</code>. Packed resources are loaded from a path relative to the executable:
+              <code>res/&lt;pack&gt;.res</code> on Windows and Linux, and <code>../resources/&lt;pack&gt;.res</code> for macOS bundles.
+            </p>
+            <p>
+              Once loaded, the runtime keeps the binary pack buffer alive and exposes resources through typed APIs. Text resources are returned with
+              <code>respack_text(...)</code>, generic files with <code>respack_file(...)</code>, and typed object resources such as images are materialized lazily
+              through <code>respack_object(...)</code>. That is why the image-handling path in <code>draw2d/image.c</code> goes through the object API rather than
+              the raw file accessor.
+            </p>
+          </section>
+
+          <section id="status" class="section">
+            <h2>Up-To-Date Checks And Exit Codes</h2>
+            <p>
+              <code>nrclib.c</code> only regenerates a pack when the source directory is newer than the generated <code>.c</code> and <code>.h</code> files.
+              The destination argument must name a <code>.c</code> file in an existing directory; <code>nrc</code> infers the matching header and packed file names from it.
+            </p>
+            <ul class="bullet-list">
+              <li><strong><code>0</code>:</strong> regeneration happened successfully.</li>
+              <li><strong><code>1</code>:</strong> the outputs were already up to date.</li>
+              <li><strong><code>-1</code>:</strong> generation completed with warnings.</li>
+              <li><strong><code>-2</code>:</strong> generation failed with errors.</li>
+              <li><strong><code>-3</code>:</strong> command-line usage error.</li>
+              <li><strong><code>-4</code>:</strong> asserts were triggered.</li>
+            </ul>
+            <p>
+              The CMake wrapper in <code>nap_resource_packs(...)</code> treats <code>0</code> and <code>1</code> as normal success, reports <code>-1</code> as warnings,
+              and treats anything else as an error.
+            </p>
+          </section>
+
+          <section id="reading" class="section">
+            <h2>Reading Order</h2>
+            <p>
+              Start with <code>nrc.c</code> for the command-line surface, then read <code>nrclib.c</code> for validation and up-to-date checks,
+              then <code>resgen.c</code> for the real format and code-generation logic. Follow that with <code>msgparser.c</code> if localized text syntax matters,
+              and finish with <code>prj/NAppTarget.cmake</code> plus <code>src/core/respack.c</code> to connect build-time generation to runtime loading.
+            </p>
+          </section>
+        </article>
+      </main>
+    </div>
+
+    <aside class="toc"></aside>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

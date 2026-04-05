@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Inet API Examples | NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="inet-api-examples">
+  <div class="layout">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrap">
+      <main class="article">
+        <article class="article-card">
+          <p class="eyebrow">Services and Tools</p>
+          <h1 class="page-title">Inet API Examples</h1>
+          <p class="lead">
+            These examples follow the real usage paths in <code>demo/urlimg</code> and <code>demo/products</code>. They show both
+            the shortest convenience path and the more explicit request/response workflow used when the caller needs status inspection.
+          </p>
+
+          <section id="sources" class="section">
+            <h2>Relevant Source Files</h2>
+            <div class="source-pills">
+              <a class="pill" href="../../src/inet/inet.h"><code>src/inet/inet.h</code></a>
+              <a class="pill" href="../../src/inet/httpreq.h"><code>src/inet/httpreq.h</code></a>
+              <a class="pill" href="../../src/inet/httpreq.c"><code>src/inet/httpreq.c</code></a>
+              <a class="pill" href="../../demo/urlimg/urlimg.c"><code>demo/urlimg/urlimg.c</code></a>
+              <a class="pill" href="../../demo/products/prmodel.c"><code>demo/products/prmodel.c</code></a>
+              <a class="pill" href="../../src/encode/url.h"><code>src/encode/url.h</code></a>
+            </div>
+          </section>
+
+          <section id="startup" class="section">
+            <h2>1. Start Inet Once For The App Or Feature Lifetime</h2>
+            <p>
+              The repo pattern is to call <code>inet_start()</code> when the feature or application comes up and <code>inet_finish()</code> on teardown.
+              <code>demo/urlimg</code> does exactly that around the window lifetime.
+            </p>
+            <pre><code>inet_start();
+/* HTTP work here */
+inet_finish();</code></pre>
+          </section>
+
+          <section id="dget" class="section">
+            <h2>2. Whole-Body Download With http_dget</h2>
+            <p>
+              <code>http_dget(...)</code> is the shortest path when the caller only needs the response body. It parses the URL,
+              selects HTTP versus HTTPS, performs the GET, and returns the response body as a memory-backed <code>Stream</code>.
+            </p>
+            <pre><code>uint32_t status = 0;
+ierror_t err = ekIOK;
+
+Stream *stm = http_dget(
+    "http://test.nappgui.com/image_formats/home_02_rgba.png",
+    &amp;status,
+    &amp;err);
+
+if (stm != NULL) {
+    /* Example from urlimg: hand the stream to image_read(...) */
+    stm_close(&amp;stm);
+}</code></pre>
+            <p>
+              In the repo, <code>demo/urlimg</code> immediately passes that stream into <code>image_read(...)</code> and updates an <code>ImageView</code>.
+            </p>
+          </section>
+
+          <section id="manual" class="section">
+            <h2>3. Manual Http Workflow</h2>
+            <p>
+              <code>demo/products</code> uses the explicit <code>Http</code> object instead of <code>http_dget(...)</code> because it wants to
+              inspect the status code before deciding whether to read the body.
+            </p>
+            <pre><code>Http *http = http_create("serv.nappgui.com", 80);
+Stream *body = NULL;
+
+if (http_get(http, "/dproducts.php", NULL, 0, NULL) == TRUE) {
+    uint32_t status = http_response_status(http);
+    if (status &gt;= 200 &amp;&amp; status &lt;= 299) {
+        body = stm_memory(4096);
+        if (http_response_body(http, body, NULL) == FALSE)
+            stm_close(&amp;body);
+    }
+}
+
+http_destroy(&amp;http);</code></pre>
+            <p>
+              That pattern is the one to copy when you need response headers, response status, or more control over when the body is materialized.
+            </p>
+          </section>
+
+          <section id="headers" class="section">
+            <h2>4. Request Headers And Response Headers</h2>
+            <p>
+              The public API supports custom request headers and indexed or name-based response header lookup.
+            </p>
+            <pre><code>http_clear_headers(http);
+http_add_header(http, "Accept", "application/json");
+http_add_header(http, "User-Agent", "nappgui-client");
+
+if (http_get(http, "/api", NULL, 0, &amp;err) == TRUE) {
+    const char_t *server = http_response_header(http, "Server");
+    uint32_t count = http_response_size(http);
+    /* http_response_name(http, i) / http_response_value(http, i) */
+}</code></pre>
+          </section>
+
+          <section id="json" class="section">
+            <h2>5. HTTP Plus JSON Is A Natural Pairing</h2>
+            <p>
+              The products demo composes the networking and encoding layers directly: fetch the HTTP body into a <code>Stream</code>,
+              then hand that stream to <code>json_read(...)</code>.
+            </p>
+            <pre><code>Stream *stm = i_http_get();
+if (stm != NULL) {
+    PJson *json = json_read(stm, NULL, PJson);
+    stm_close(&amp;stm);
+
+    if (json != NULL) {
+        /* use json-&gt;data */
+        json_destroy(&amp;json, PJson);
+    }
+}</code></pre>
+            <p>
+              This is the main design intent behind <code>inet</code>: produce a complete response body in the same <code>Stream</code> abstraction
+              that the rest of NAppGUI already uses.
+            </p>
+          </section>
+
+          <section id="exists" class="section">
+            <h2>6. Quick Existence Check</h2>
+            <p>
+              When the caller only needs to know whether a URL resolves to a successful response, <code>http_exists(...)</code> is the smallest API.
+            </p>
+            <pre><code>if (http_exists("https://example.com/file.png") == TRUE) {
+    /* status was in the 200..299 range */
+}</code></pre>
+            <p>
+              Internally, this helper disables auto-redirect and checks the final response status range after a GET.
+            </p>
+          </section>
+
+          <section id="notes" class="section">
+            <h2>Practical Notes</h2>
+            <ul class="bullet-list">
+              <li><strong>Default ports:</strong> pass <code>UINT16_MAX</code> to use <code>80</code> for <code>http_create(...)</code> or <code>443</code> for <code>http_secure(...)</code>.</li>
+              <li><strong>Error model:</strong> failures surface through <code>ierror_t</code>, which is intentionally coarse and backend-agnostic.</li>
+              <li><strong>Response parsing:</strong> headers and status are parsed lazily when response accessors are called.</li>
+              <li><strong>URL helpers:</strong> <code>http_dget(...)</code> and <code>http_exists(...)</code> rely on the <code>encode</code> URL parser.</li>
+            </ul>
+          </section>
+        </article>
+      </main>
+    </div>
+
+    <aside class="toc"></aside>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Platform Implementations | NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="platform-implementations">
+  <div class="layout">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrap">
+      <main class="article">
+        <article class="article-card">
+          <p class="eyebrow">Platforms</p>
+          <h1 class="page-title">Platform Implementations</h1>
+          <p class="lead">
+            NAppGUI's portable API is backed by three concrete native stacks in this checkout: Cocoa/AppKit on macOS,
+            Win32 on Windows, and GTK3 on Linux. Each backend provides the <code>osapp</code> runloop pieces, the
+            <code>osgui</code> control/window implementation, and the platform drawing backend used by <code>draw2d</code>.
+          </p>
+
+          <section id="sources" class="section">
+            <h2>Relevant Source Files</h2>
+            <div class="source-pills">
+              <a class="pill" href="../../src/osapp/osapp.c"><code>src/osapp/osapp.c</code></a>
+              <a class="pill" href="../../src/osgui/osguictx.c"><code>src/osgui/osguictx.c</code></a>
+              <a class="pill" href="../../src/osapp/osx/osapp_osx.m"><code>src/osapp/osx/osapp_osx.m</code></a>
+              <a class="pill" href="../../src/osapp/win/osapp_win.c"><code>src/osapp/win/osapp_win.c</code></a>
+              <a class="pill" href="../../src/osapp/gtk/osapp_gtk.c"><code>src/osapp/gtk/osapp_gtk.c</code></a>
+              <a class="pill" href="../../src/draw2d/osx/draw_osx.m"><code>src/draw2d/osx/draw_osx.m</code></a>
+              <a class="pill" href="../../src/draw2d/win/draw_win.cpp"><code>src/draw2d/win/draw_win.cpp</code></a>
+              <a class="pill" href="../../src/draw2d/gtk/draw_gtk.c"><code>src/draw2d/gtk/draw_gtk.c</code></a>
+            </div>
+          </section>
+
+          <section id="contract" class="section">
+            <h2>Shared Contract</h2>
+            <p>
+              The high-level application bootstrap is the same across platforms: <code>osmain_imp()</code> starts <code>osgui</code>,
+              starts <code>gui</code>, creates the native <code>GuiCtx</code> with <code>osguictx()</code>, installs it as current,
+              and then hands control to the platform-specific <code>_osapp_run(...)</code> implementation.
+            </p>
+            <p>
+              From that point on, control creation, window events, focus routing, drawing, and optional web support all flow through the platform backend.
+            </p>
+          </section>
+
+          <section id="comparison" class="section">
+            <h2>Backend Comparison</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Area</th>
+                  <th>macOS</th>
+                  <th>Windows</th>
+                  <th>GTK</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Application loop</td>
+                  <td><code>NSApplication</code> delegate plus timers in multiple runloop modes</td>
+                  <td>Win32 timer plus standard message loop</td>
+                  <td><code>GtkApplication</code> activation plus <code>g_timeout_add</code> timers</td>
+                </tr>
+                <tr>
+                  <td>Window base</td>
+                  <td><code>NSPanel</code></td>
+                  <td><code>HWND</code></td>
+                  <td><code>GtkApplicationWindow</code> or offscreen GTK window</td>
+                </tr>
+                <tr>
+                  <td>2D drawing</td>
+                  <td>Core Graphics</td>
+                  <td>GDI/GDI+</td>
+                  <td>Cairo plus Pango text</td>
+                </tr>
+                <tr>
+                  <td>Browser widget</td>
+                  <td><code>WKWebView</code> when enabled</td>
+                  <td>WebView2 when enabled</td>
+                  <td>WebKitGTK when enabled</td>
+                </tr>
+                <tr>
+                  <td>OpenGL helper</td>
+                  <td><code>NSOpenGLContext</code></td>
+                  <td><code>wgl</code></td>
+                  <td>EGL on GTK/X11</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section id="notes" class="section">
+            <h2>Platform-Specific Character</h2>
+            <ul class="bullet-list">
+              <li><strong>macOS:</strong> uses staged termination, deferred theme refresh, <code>NSPanel</code>-based windows, and AppKit appearance-aware color handling.</li>
+              <li><strong>Windows:</strong> uses classic Win32 windows, accelerator tables, tooltip windows, GDI+ graphics, and asynchronous WebView2 creation.</li>
+              <li><strong>GTK:</strong> relies on configure-event driven move/resize handling, Cairo/Pango rendering, GTK accelerator groups, and WebKitGTK when available.</li>
+            </ul>
+          </section>
+
+          <section id="reading" class="section">
+            <h2>Reading Order</h2>
+            <p>
+              Start with the per-platform <code>osapp</code> file to understand lifecycle and runloop behavior, then move to the platform
+              <code>oswindow</code> implementation, then the matching <code>draw2d</code> backend, and finally the platform <code>osweb</code> file
+              if browser integration matters for your application.
+            </p>
+          </section>
+        </article>
+      </main>
+    </div>
+
+    <aside class="toc"></aside>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

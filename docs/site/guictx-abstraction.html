@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GuiCtx Abstraction Layer | NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="guictx-abstraction">
+  <div class="layout">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrap">
+      <main class="article">
+        <article class="article-card">
+          <p class="eyebrow">Abstraction Layer</p>
+          <h1 class="page-title">GuiCtx Abstraction Layer</h1>
+          <p class="lead">
+            <code>GuiCtx</code> is the central architectural seam in NAppGUI. It lets the high-level <code>gui</code> library compose interfaces
+            without owning the platform-specific code that draws widgets, dispatches native events, or creates windows.
+          </p>
+
+          <section id="sources" class="section">
+            <h2>Relevant Source Files</h2>
+            <div class="source-pills">
+              <a class="pill" href="../../src/draw2d/guictx.hxx"><code>src/draw2d/guictx.hxx</code></a>
+              <a class="pill" href="../../src/draw2d/guictx.h"><code>src/draw2d/guictx.h</code></a>
+              <a class="pill" href="../../src/draw2d/guictx.c"><code>src/draw2d/guictx.c</code></a>
+              <a class="pill" href="../../src/osgui/osguictx.c"><code>src/osgui/osguictx.c</code></a>
+              <a class="pill" href="../../src/osgui/osguictx.h"><code>src/osgui/osguictx.h</code></a>
+            </div>
+          </section>
+
+          <section id="why" class="section">
+            <h2>Why It Exists</h2>
+            <p>
+              The top-level comment in <code>guictx.hxx</code> states the design directly: the GUI library knows how to compose and manage interfaces,
+              but it does not directly draw widgets or capture platform input. Those jobs belong to a backend context object, <code>GuiCtx</code>.
+            </p>
+            <p>
+              This is why the real dependency graph is <code>gui -&gt; draw2d</code> and <code>osgui -&gt; draw2d</code>, not <code>gui -&gt; osgui</code>.
+            </p>
+          </section>
+
+          <section id="shape" class="section">
+            <h2>What GuiCtx Contains</h2>
+            <p>
+              <code>GuiCtx</code> is implemented as a large collection of function-pointer tables and manager append helpers. The backend fills in operations for:
+            </p>
+            <ul class="bullet-list">
+              <li>buttons, popups, edits, combos, sliders, progress bars, views, text views, web views, split views, panels, windows, menus, and common dialogs</li>
+              <li>global OS services such as colors, cursors, display information, transitions, and idle callbacks</li>
+              <li>custom control drawing hooks</li>
+            </ul>
+            <p>
+              The tables are indexed by internal GUI type identifiers, so the higher layers can dispatch platform work uniformly across control families.
+            </p>
+          </section>
+
+          <section id="backend" class="section">
+            <h2>Current Backend Implementation</h2>
+            <p>
+              The local repository ships one real backend provider: <code>osguictx()</code> in <code>src/osgui/osguictx.c</code>.
+              That function allocates a fresh <code>GuiCtx</code> and wires every manager to the concrete OS wrapper functions from <code>osgui</code>.
+            </p>
+            <p>
+              On startup, <code>osmain_imp</code> creates this native context and installs it with <code>guictx_set_current(...)</code>.
+              From then on, the high-level GUI layer routes control creation, sizing, events, and window operations through the current backend.
+            </p>
+          </section>
+
+          <section id="status" class="section">
+            <h2>Public Status</h2>
+            <p>
+              <code>GuiCtx</code> is an architectural centerpiece, but it is not presented as a standalone public subsystem.
+              The comments explicitly say it is not currently documented separately and is considered part of the final GUI library.
+            </p>
+            <p>
+              In practice, this means application authors use the high-level APIs while backend maintainers or contributors work directly against <code>GuiCtx</code>.
+            </p>
+          </section>
+
+          <section id="implications" class="section">
+            <h2>Practical Implications</h2>
+            <ul class="bullet-list">
+              <li><strong>Portability:</strong> the same layout and widget logic can target Cocoa, Win32, or GTK through one call surface.</li>
+              <li><strong>Isolation:</strong> platform wrappers can evolve without forcing the high-level GUI code to depend on platform headers.</li>
+              <li><strong>Limits:</strong> the repo comments mention possible future alternative contexts, but this checkout only ships the native one from <code>osgui</code>.</li>
+            </ul>
+          </section>
+        </article>
+      </main>
+    </div>
+
+    <aside class="toc"></aside>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

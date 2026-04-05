@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Text and Rich Content | NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="text-rich-content">
+  <div class="layout">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrap">
+      <main class="article">
+        <article class="article-card">
+          <p class="eyebrow">GUI</p>
+          <h1 class="page-title">Text and Rich Content</h1>
+          <p class="lead">
+            NAppGUI separates lightweight display widgets from richer document-style surfaces. Labels and image views are
+            small owner-drawn controls, <code>TextView</code> offers formatted text editing and RTF support, and <code>WebView</code>
+            wraps an optional embedded browser backend.
+          </p>
+
+          <section id="sources" class="section">
+            <h2>Relevant Source Files</h2>
+            <div class="source-pills">
+              <a class="pill" href="../../src/gui/label.h"><code>src/gui/label.h</code></a>
+              <a class="pill" href="../../src/gui/imageview.h"><code>src/gui/imageview.h</code></a>
+              <a class="pill" href="../../src/gui/textview.h"><code>src/gui/textview.h</code></a>
+              <a class="pill" href="../../src/gui/webview.h"><code>src/gui/webview.h</code></a>
+              <a class="pill" href="../../src/gui/view.h"><code>src/gui/view.h</code></a>
+              <a class="pill" href="../../src/draw2d/font.h"><code>src/draw2d/font.h</code></a>
+              <a class="pill" href="../../src/draw2d/image.h"><code>src/draw2d/image.h</code></a>
+            </div>
+          </section>
+
+          <section id="labels" class="section">
+            <h2>Labels and Image Views</h2>
+            <p>
+              <code>Label</code> is more than static text. It supports click handling, explicit width, dynamic sizing from text,
+              custom font, hover style, normal/hover foreground and background colors, multiline mode, alignment, and ellipsis trimming.
+            </p>
+            <p>
+              <code>ImageView</code> is the image counterpart: explicit view size, scale mode, click handling, and an extra
+              <code>OnOverDraw</code> hook for custom painting on top of the image. Both are implemented on top of the custom-view infrastructure,
+              not as thin wrappers around native OS label/image widgets.
+            </p>
+          </section>
+
+          <section id="textview" class="section">
+            <h2>TextView as The Rich Text Surface</h2>
+            <p>
+              <code>TextView</code> exposes a document-like API rather than a plain edit API. It supports formatted append/write calls,
+              caret-positioned writing, RTF import from a <code>Stream</code>, font family/size/style selection, text and paragraph colors,
+              alignment, line spacing, before/after paragraph spacing, selection control, deletion, clipboard commands, caret scrolling,
+              editability, visible scrollbars, and wrapping.
+            </p>
+            <p>
+              The styling model is incremental: configure attributes, then apply them either to all text or the current selection via
+              <code>textview_apply_all(...)</code> or <code>textview_apply_select(...)</code>.
+            </p>
+          </section>
+
+          <section id="webview" class="section">
+            <h2>WebView Has a Stable API but Conditional Backend</h2>
+            <p>
+              The public API is intentionally small: create the view, track focus, set size, navigate, and go back/forward.
+              That API exists on every platform, but the real browser implementation depends on build-time capability.
+            </p>
+            <p>
+              In this checkout the backend matrix is: <code>WKWebView</code> on macOS when web support is enabled,
+              WebView2 on Windows, and WebKitGTK on GTK. Without support, the native wrapper still exists but falls back to a stub control.
+            </p>
+          </section>
+
+          <section id="resources" class="section">
+            <h2>Fonts, Images, and Resource Packs</h2>
+            <p>
+              The rich-content widgets rely heavily on <code>draw2d</code>. Fonts come from <code>font.h</code>,
+              images from <code>image.h</code>, and many text/image properties can be loaded indirectly through GUI resource packs.
+              That is why APIs such as label text, button text, popup/list element text, and image-bearing controls integrate cleanly
+              with the <code>gui_respack(...)</code> resource model.
+            </p>
+            <p>
+              At the page-author level, the useful distinction is simple: use labels and image views for lightweight, custom-drawn display;
+              use text views for formatted editable content; use web views when the platform/browser dependencies are acceptable.
+            </p>
+          </section>
+        </article>
+      </main>
+    </div>
+
+    <aside class="toc"></aside>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

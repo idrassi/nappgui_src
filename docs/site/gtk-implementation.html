@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GTK Implementation | NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="gtk-implementation">
+  <div class="layout">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrap">
+      <main class="article">
+        <article class="article-card">
+          <p class="eyebrow">Platforms</p>
+          <h1 class="page-title">GTK Implementation</h1>
+          <p class="lead">
+            The Linux desktop backend is a GTK3 implementation built around <code>GtkApplication</code>,
+            GTK windows/widgets, Cairo drawing, Pango text layout, and optional WebKitGTK browser support.
+          </p>
+
+          <section id="sources" class="section">
+            <h2>Relevant Source Files</h2>
+            <div class="source-pills">
+              <a class="pill" href="../../src/osapp/gtk/osapp_gtk.c"><code>src/osapp/gtk/osapp_gtk.c</code></a>
+              <a class="pill" href="../../src/osgui/gtk/oswindow.c"><code>src/osgui/gtk/oswindow.c</code></a>
+              <a class="pill" href="../../src/draw2d/gtk/draw_gtk.c"><code>src/draw2d/gtk/draw_gtk.c</code></a>
+              <a class="pill" href="../../src/osgui/gtk/osweb.c"><code>src/osgui/gtk/osweb.c</code></a>
+              <a class="pill" href="../../prj/NAppCompilers.cmake"><code>prj/NAppCompilers.cmake</code></a>
+              <a class="pill" href="../../prj/NAppUtils.cmake"><code>prj/NAppUtils.cmake</code></a>
+            </div>
+          </section>
+
+          <section id="lifecycle" class="section">
+            <h2>Application Lifecycle</h2>
+            <p>
+              The GTK app layer allocates a <code>GtkApplication</code> with ID <code>com.nappgui.app</code>, stores the startup callbacks,
+              and then runs them from the <code>activate</code> signal path. During initialization it explicitly sets
+              <code>GDK_BACKEND=x11</code>, records the command-line arguments, and prepares timer IDs plus listener slots.
+            </p>
+            <p>
+              Once activated, the backend calls <code>osgui_initialize()</code>, holds the application, and installs two recurring timers:
+              one for the main update loop and one that waits until the GUI backend is fully initialized before calling the app's
+              finish-launching callback. Termination is cooperative: the timer loop notices the terminate flag and runs the cleanup sequence.
+            </p>
+          </section>
+
+          <section id="window" class="section">
+            <h2>Window System</h2>
+            <p>
+              GTK windows are wrapped by <code>OSWindow</code>, which stores the main panel, modal runloop, flags, role, accelerator group,
+              listeners, tabstop state, hotkeys, resize constraints, and the last known configure-event geometry.
+            </p>
+            <p>
+              Move and resize behavior comes from <code>configure-event</code>, not from a separate Win32-style sizing message pair.
+              The backend compares the incoming event with the stored geometry, emits move/resize notifications only for user-driven changes,
+              and updates minimum size hints when the resize listener demands a larger size than GTK proposed.
+            </p>
+          </section>
+
+          <section id="input" class="section">
+            <h2>Keyboard, Focus, and Modal Behavior</h2>
+            <p>
+              Key handling lives at the window level. The GTK backend intercepts Tab, Shift-Tab, Enter, keypad Enter, and Escape
+              to implement tab traversal, default-button triggering, return-close semantics, and escape-close semantics. It also checks
+              the window hotkey table on every key press.
+            </p>
+            <p>
+              Modal windows are implemented by creating a private <code>GMainLoop</code>, marking the window modal, showing it,
+              and running that loop until <code>oswindow_stop_modal(...)</code> records a return value, optionally hides the window,
+              and quits the loop.
+            </p>
+          </section>
+
+          <section id="menus" class="section">
+            <h2>Menubars and GTK-Specific Window Behavior</h2>
+            <p>
+              The backend treats menubars as part of layout sizing. It measures the current menubar height, keeps the required menu width slightly
+              narrower on resizable windows to preserve shrink behavior, and recalculates window size requests when the menubar changes.
+            </p>
+            <p>
+              There is also a platform-specific quirk in the app layer: some GTK/Linux setups attach the menubar to a global application menubar
+              instead of the window itself, so the app code has explicit logic to clear the application menubar when needed.
+            </p>
+          </section>
+
+          <section id="drawing" class="section">
+            <h2>Drawing and Text</h2>
+            <p>
+              <code>draw_gtk.c</code> uses Cairo for geometry and raster drawing and Pango for text layout. The code is careful about transform handling:
+              it avoids inheriting arbitrary Cairo rotation/scale state into the Pango layout context and notes that text scaling is managed by Cairo instead.
+            </p>
+            <p>
+              The GTK text path also maps NAppGUI features like underline, strikeout, ellipsis, and alignment to Pango markup and alignment modes.
+              In practice, GTK is the backend where the draw2d abstraction is most visibly layered over external graphics/text libraries.
+            </p>
+          </section>
+
+          <section id="webview" class="section">
+            <h2>WebKitGTK Support</h2>
+            <p>
+              When web support is available, <code>osweb.c</code> creates a real <code>WebKitWebView</code> and maps the public commands to
+              <code>webkit_web_view_load_uri</code>, <code>go_back</code>, and <code>go_forward</code>. Without support, it falls back to a plain
+              GTK drawing area so the public API can still compile.
+            </p>
+            <p>
+              That compile-time gating is controlled by the CMake web-support check, which looks for compatible WebKitGTK packages.
+            </p>
+          </section>
+        </article>
+      </main>
+    </div>
+
+    <aside class="toc"></aside>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

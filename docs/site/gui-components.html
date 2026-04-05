@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GUI Components | NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="gui-components">
+  <div class="layout">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrap">
+      <main class="article">
+        <article class="article-card">
+          <p class="eyebrow">GUI</p>
+          <h1 class="page-title">GUI Components</h1>
+          <p class="lead">
+            The public GUI surface is collected by <code>guiall.h</code>. It is broader than a widget list:
+            NAppGUI exposes application-level services, layout containers, menus, common dialogs, native-backed controls,
+            and owner-drawn custom surfaces through one umbrella include.
+          </p>
+
+          <section id="sources" class="section">
+            <h2>Relevant Source Files</h2>
+            <div class="source-pills">
+              <a class="pill" href="../../src/gui/guiall.h"><code>src/gui/guiall.h</code></a>
+              <a class="pill" href="../../src/gui/gui.h"><code>src/gui/gui.h</code></a>
+              <a class="pill" href="../../src/gui/view.h"><code>src/gui/view.h</code></a>
+              <a class="pill" href="../../src/gui/panel.h"><code>src/gui/panel.h</code></a>
+              <a class="pill" href="../../src/gui/window.h"><code>src/gui/window.h</code></a>
+              <a class="pill" href="../../src/gui/menu.h"><code>src/gui/menu.h</code></a>
+              <a class="pill" href="../../src/gui/menuitem.h"><code>src/gui/menuitem.h</code></a>
+              <a class="pill" href="../../src/gui/comwin.h"><code>src/gui/comwin.h</code></a>
+            </div>
+          </section>
+
+          <section id="umbrella" class="section">
+            <h2>What guiall.h Actually Exposes</h2>
+            <p>
+              The umbrella header includes all of the major GUI families: buttons, edits, combos, popups, sliders,
+              progress bars, labels, image views, list boxes, table views, views, text views, web views, split views,
+              panels, layouts, menus, menu items, windows, line widgets, and the shared <code>gui.h</code> service API.
+            </p>
+            <p>
+              That means application code can often include just <code>nappgui.h</code> or <code>gui/guiall.h</code> and get the full desktop surface.
+            </p>
+          </section>
+
+          <section id="taxonomy" class="section">
+            <h2>Component Taxonomy</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Family</th>
+                  <th>Representative Headers</th>
+                  <th>Main Role</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Application services</td>
+                  <td><code>gui.h</code></td>
+                  <td>Theme state, resource packs, device info, notifications, idle work, and generic info dialogs.</td>
+                </tr>
+                <tr>
+                  <td>Primitive controls</td>
+                  <td><code>button.h</code>, <code>edit.h</code>, <code>combo.h</code>, <code>popup.h</code>, <code>slider.h</code>, <code>progress.h</code>, <code>updown.h</code></td>
+                  <td>Standard form/input controls backed by the native platform backend.</td>
+                </tr>
+                <tr>
+                  <td>Owner-drawn surfaces</td>
+                  <td><code>view.h</code>, <code>label.h</code>, <code>imageview.h</code>, <code>listbox.h</code>, <code>tableview.h</code></td>
+                  <td>Custom drawing and event routing on top of the shared view infrastructure.</td>
+                </tr>
+                <tr>
+                  <td>Rich content</td>
+                  <td><code>textview.h</code>, <code>webview.h</code></td>
+                  <td>Formatted text editing/display and embedded browser content.</td>
+                </tr>
+                <tr>
+                  <td>Containers</td>
+                  <td><code>layout.h</code>, <code>cell.h</code>, <code>panel.h</code>, <code>splitview.h</code>, <code>window.h</code></td>
+                  <td>Composition, nesting, scrolling, panel switching, and top-level window behavior.</td>
+                </tr>
+                <tr>
+                  <td>Menus and dialogs</td>
+                  <td><code>menu.h</code>, <code>menuitem.h</code>, <code>comwin.h</code></td>
+                  <td>Menu bars, popup menus, shortcuts, and OS-native common windows.</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section id="services" class="section">
+            <h2>Shared GUI Services</h2>
+            <p>
+              <code>gui.h</code> is the cross-cutting API that makes the component layer feel like a framework instead of a widget bag.
+              It lets apps register resource packs with <code>gui_respack(...)</code>, switch locale with <code>gui_language(...)</code>,
+              resolve themed colors and dark mode, query device/workarea/mouse information, and subscribe to theme-change,
+              notification, or idle events.
+            </p>
+            <p>
+              This is also where the binding-event helpers live: <code>evbind_object(...)</code> and <code>evbind_modify(...)</code>.
+            </p>
+          </section>
+
+          <section id="native" class="section">
+            <h2>Native Wrappers Versus Custom Views</h2>
+            <p>
+              The component list is intentionally mixed. Buttons, edits, combos, popups, sliders, and window chrome come from
+              the native backend through <code>GuiCtx</code> and <code>osgui</code>. By contrast, several higher-level widgets are
+              implemented as custom views in the portable <code>gui</code> layer and drawn through <code>draw2d</code>.
+            </p>
+            <p>
+              That split is one of the key architectural patterns in the repo: the public API is unified, but the implementation deliberately uses both
+              native controls and owner-drawn controls where that makes more sense.
+            </p>
+          </section>
+
+          <section id="menus" class="section">
+            <h2>Menus and Common Windows</h2>
+            <p>
+              Menus are public widgets in their own right. <code>Menu</code> manages item ordering and popup launch,
+              while <code>MenuItem</code> exposes text, image, enable/visible state, tri-state, keyboard shortcuts, and nested submenus.
+            </p>
+            <p>
+              <code>comwin.h</code> rounds out the GUI surface with native dialogs for directory selection, file open/save, and color picking,
+              so the library does not force applications to drop down into backend-specific code for basic desktop flows.
+            </p>
+          </section>
+        </article>
+      </main>
+    </div>
+
+    <aside class="toc"></aside>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Layout Components | NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="layout-components">
+  <div class="layout">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrap">
+      <main class="article">
+        <article class="article-card">
+          <p class="eyebrow">GUI</p>
+          <h1 class="page-title">Layout Components</h1>
+          <p class="lead">
+            The layout-oriented widget set includes panels, split views, windows, menus, common dialogs, and the simple
+            line separator widget. Together they define how NAppGUI structures screens above the individual control level.
+          </p>
+
+          <section id="sources" class="section">
+            <h2>Relevant Source Files</h2>
+            <div class="source-pills">
+              <a class="pill" href="../../src/gui/panel.h"><code>src/gui/panel.h</code></a>
+              <a class="pill" href="../../src/gui/splitview.h"><code>src/gui/splitview.h</code></a>
+              <a class="pill" href="../../src/gui/window.h"><code>src/gui/window.h</code></a>
+              <a class="pill" href="../../src/gui/line.h"><code>src/gui/line.h</code></a>
+              <a class="pill" href="../../src/gui/menu.h"><code>src/gui/menu.h</code></a>
+              <a class="pill" href="../../src/gui/menuitem.h"><code>src/gui/menuitem.h</code></a>
+              <a class="pill" href="../../src/gui/comwin.h"><code>src/gui/comwin.h</code></a>
+              <a class="pill" href="../../src/gui/panel.c"><code>src/gui/panel.c</code></a>
+              <a class="pill" href="../../src/gui/window.c"><code>src/gui/window.c</code></a>
+            </div>
+          </section>
+
+          <section id="panel" class="section">
+            <h2>Panel</h2>
+            <p>
+              <code>Panel</code> is the main scrollable/container surface for composed layouts. It comes in three creation forms:
+              plain panel, scrollable panel, and custom panel with explicit scroll/border flags. Publicly, you set panel size,
+              attach one or more layouts, switch the visible layout, update the panel, and query scrollbar thickness.
+            </p>
+            <p>
+              Internally, panels can host multiple layouts and swap which one is active. That makes them a reusable view-switching primitive,
+              not just a passive parent for one child tree.
+            </p>
+          </section>
+
+          <section id="splitview" class="section">
+            <h2>SplitView</h2>
+            <p>
+              <code>SplitView</code> composes two panes either horizontally or vertically. Each side can host a generic <code>View</code>,
+              <code>TextView</code>, <code>WebView</code>, <code>TableView</code>, another <code>SplitView</code>, or a <code>Panel</code>.
+              The public API then controls splitter mode/position, per-side visibility, and per-side minimum sizes.
+            </p>
+            <p>
+              This makes split views one of the main structural widgets for IDE-style or inspector-style interfaces in the repo.
+            </p>
+          </section>
+
+          <section id="window" class="section">
+            <h2>Window</h2>
+            <p>
+              <code>Window</code> is the top-level container and interaction coordinator. It exposes panel attachment,
+              close/move/resize listeners, show/hide, overlay and modal launch, modal stop value, hotkeys, tabstop cycling,
+              focus management, maximize/minimize, origin and client size, default button behavior, and cursor changes.
+            </p>
+            <p>
+              Importantly, the window API is layout-first: attach a panel, and the internals wrap it in a root layout and keep the
+              whole tree recomposed on resize or role changes.
+            </p>
+          </section>
+
+          <section id="menus" class="section">
+            <h2>Menus and Menu Items</h2>
+            <p>
+              <code>Menu</code> handles menu assembly and popup launch. <code>MenuItem</code> exposes click listeners, enable/visible state,
+              tri-state value, text, image, accelerator key, and nested submenu ownership. The same public model supports menu bars and popup menus;
+              <code>menu_is_menubar(...)</code> tells them apart at runtime.
+            </p>
+            <p>
+              This is also where the window hotkey story overlaps with menu accelerators, especially on Windows and GTK backends.
+            </p>
+          </section>
+
+          <section id="dialogs" class="section">
+            <h2>Common Dialogs and Decoration</h2>
+            <p>
+              <code>comwin.h</code> exposes native directory selection, file open/save, and color picker dialogs.
+              For lightweight visual separation inside layouts, <code>line.h</code> provides horizontal and vertical line widgets with explicit length.
+            </p>
+            <p>
+              The line widget matters in this checkout because the most recent commit message references support for decoration separators,
+              which lines are the public API surface for.
+            </p>
+          </section>
+        </article>
+      </main>
+    </div>
+
+    <aside class="toc"></aside>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

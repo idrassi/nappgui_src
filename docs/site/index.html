@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <main class="home-shell">
+    <header class="home-hero">
+      <p class="eyebrow">Repo-Owned Documentation</p>
+      <h1 class="page-title">NAppGUI Local Docs</h1>
+      <p class="lead">
+        Code-backed documentation for the local <code>nappgui_src</code> checkout.
+        This site is written against commit <code>2b0099603323ae7a35b8ee6998d35af94f5b16c8</code>
+        from <code>2026-03-17</code>, version <code>1.6.1</code>.
+      </p>
+      <div class="callout">
+        This documentation set is maintained directly from the checked-out source tree and versioned with the local repository state.
+      </div>
+    </header>
+
+    <section class="home-search-panel">
+      <div class="home-search"></div>
+    </section>
+
+    <section class="home-grid">
+      <article class="home-card">
+        <h2>Foundations</h2>
+        <p>The architectural pages that explain the real module graph, bootstrap path, GuiCtx seam, layout engine, DBind model, and CMake build pipeline.</p>
+        <div class="home-links">
+          <a class="button-link" href="overview.html">Open Overview</a>
+        </div>
+        <ul>
+          <li><a href="architecture-notes.html">Architecture Notes</a></li>
+          <li><a href="core-architecture.html">Core Architecture</a></li>
+          <li><a href="guictx-abstraction.html">GuiCtx Abstraction Layer</a></li>
+          <li><a href="layout-cell-management.html">Layout and Cell Management</a></li>
+          <li><a href="data-binding-system.html">Data Binding System</a></li>
+          <li><a href="build-system-configuration.html">Build System and Configuration</a></li>
+        </ul>
+      </article>
+
+      <article class="home-card">
+        <h2>GUI Surface</h2>
+        <p>The public widget catalogue, from basic controls to split views, menus, text surfaces, data views, and utility dialogs.</p>
+        <div class="home-links">
+          <a class="button-link" href="gui-components.html">Open GUI Pages</a>
+        </div>
+        <ul>
+          <li><a href="basic-controls.html">Basic Controls</a></li>
+          <li><a href="text-rich-content.html">Text and Rich Content</a></li>
+          <li><a href="data-display-components.html">Data Display Components</a></li>
+          <li><a href="layout-components.html">Layout Components</a></li>
+        </ul>
+      </article>
+
+      <article class="home-card">
+        <h2>Platform Backends</h2>
+        <p>The native implementations behind <code>osgui</code> and <code>osapp</code>, with per-platform runloop, windowing, drawing, and webview details.</p>
+        <div class="home-links">
+          <a class="button-link" href="platform-implementations.html">Open Backend Guide</a>
+        </div>
+        <ul>
+          <li><a href="macos-implementation.html">macOS Implementation</a></li>
+          <li><a href="windows-implementation.html">Windows Implementation</a></li>
+          <li><a href="gtk-implementation.html">GTK Implementation</a></li>
+        </ul>
+      </article>
+
+      <article class="home-card">
+        <h2>Core Runtime</h2>
+        <p>The layers under GUI: events, resources, heap utilities, typed containers, filesystem helpers, streams, draw2d, and OpenGL.</p>
+        <div class="home-links">
+          <a class="button-link" href="core-infrastructure.html">Open Core Pages</a>
+        </div>
+        <ul>
+          <li><a href="memory-management-core-types.html">Memory Management and Core Types</a></li>
+          <li><a href="file-system-io.html">File System and I/O</a></li>
+          <li><a href="graphics-opengl-integration.html">Graphics and OpenGL Integration</a></li>
+          <li><a href="ogl3d-internals.html">OGL3D Internals</a></li>
+        </ul>
+      </article>
+
+      <article class="home-card">
+        <h2>Services and Tools</h2>
+        <p>Subsystems outside the main GUI stack: serialization, URL and HTTP helpers, plus the resource compiler that feeds generated packs into the runtime.</p>
+        <div class="home-links">
+          <a class="button-link" href="encode-library.html">Open Service Pages</a>
+        </div>
+        <ul>
+          <li><a href="encode-library.html">Encode Library</a></li>
+          <li><a href="encode-api-examples.html">Encode API Examples</a></li>
+          <li><a href="inet-http-client.html">Inet HTTP Client</a></li>
+          <li><a href="inet-api-examples.html">Inet API Examples</a></li>
+          <li><a href="nrc-resource-compiler.html">NRC Resource Compiler</a></li>
+        </ul>
+      </article>
+    </section>
+
+    <p class="footer-note">
+      This site is a repo-owned documentation set for the current checkout. The checked-out source tree is the source of truth.
+    </p>
+  </main>
+  <script src="assets/site.js"></script>
+</body>
+</html>

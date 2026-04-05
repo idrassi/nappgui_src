@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>macOS Implementation | NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="macos-implementation">
+  <div class="layout">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrap">
+      <main class="article">
+        <article class="article-card">
+          <p class="eyebrow">Platform Implementation</p>
+          <h1 class="page-title">macOS Implementation</h1>
+          <p class="lead">
+            The macOS backend maps NAppGUI's abstract GUI operations onto Cocoa/AppKit classes,
+            Core Graphics drawing, and optional WebKit support. This page is based on the local checkout
+            and reflects the current Objective-C backend in this repository.
+          </p>
+
+          <div class="meta-grid">
+            <div class="meta-item">
+              <span>Verified Commit</span>
+              <strong><code>2b0099603323ae7a35b8ee6998d35af94f5b16c8</code></strong>
+            </div>
+            <div class="meta-item">
+              <span>Commit Date</span>
+              <strong><code>2026-03-17</code></strong>
+            </div>
+            <div class="meta-item">
+              <span>Version</span>
+              <strong><code>1.6.1</code></strong>
+            </div>
+            <div class="meta-item">
+              <span>Backend Scope</span>
+              <strong><code>osapp</code> + <code>osgui</code> + <code>draw2d</code></strong>
+            </div>
+          </div>
+
+          <div class="callout warn">
+            This page is source-verified against the checked-out macOS backend and build files, including conditional code paths for theme handling,
+            WebKit support, native control rasterization, and lifecycle behavior.
+          </div>
+
+          <section id="sources" class="section">
+            <h2>Relevant Source Files</h2>
+            <div class="source-pills">
+              <a class="pill" href="../../src/osapp/osx/osapp_osx.m"><code>src/osapp/osx/osapp_osx.m</code></a>
+              <a class="pill" href="../../src/osgui/osx/oswindow.m"><code>src/osgui/osx/oswindow.m</code></a>
+              <a class="pill" href="../../src/osgui/osx/osglobals.m"><code>src/osgui/osx/osglobals.m</code></a>
+              <a class="pill" href="../../src/osgui/osx/oscolor.m"><code>src/osgui/osx/oscolor.m</code></a>
+              <a class="pill" href="../../src/osgui/osx/oscontrol.m"><code>src/osgui/osx/oscontrol.m</code></a>
+              <a class="pill" href="../../src/osgui/osx/oscombo.m"><code>src/osgui/osx/oscombo.m</code></a>
+              <a class="pill" href="../../src/osgui/osx/ospopup.m"><code>src/osgui/osx/ospopup.m</code></a>
+              <a class="pill" href="../../src/osgui/osx/osview.m"><code>src/osgui/osx/osview.m</code></a>
+              <a class="pill" href="../../src/osgui/osx/osdrawctrl.m"><code>src/osgui/osx/osdrawctrl.m</code></a>
+              <a class="pill" href="../../src/draw2d/osx/draw_osx.m"><code>src/draw2d/osx/draw_osx.m</code></a>
+              <a class="pill" href="../../src/draw2d/osx/osimage.m"><code>src/draw2d/osx/osimage.m</code></a>
+              <a class="pill" href="../../src/osgui/osx/osweb.m"><code>src/osgui/osx/osweb.m</code></a>
+              <a class="pill" href="../../prj/NAppUtils.cmake"><code>prj/NAppUtils.cmake</code></a>
+              <a class="pill" href="../../prj/NAppTarget.cmake"><code>prj/NAppTarget.cmake</code></a>
+            </div>
+          </section>
+
+          <section id="purpose" class="section">
+            <h2>Purpose and Scope</h2>
+            <p>
+              NAppGUI's macOS implementation is the Cocoa/AppKit backend used by the native <code>osgui</code> layer.
+              It translates the abstract widget and window operations exposed through <code>GuiCtx</code> into Objective-C classes,
+              <code>NSView</code>/<code>NSControl</code> wrappers, <code>NSPanel</code>-based windows, Core Graphics drawing, and optional <code>WKWebView</code> integration.
+            </p>
+            <p>
+              This backend is not a separate public framework. It is one concrete implementation behind the higher-level
+              <code>gui</code> and <code>osapp</code> APIs, and it becomes active when <code>osmain(...)</code> starts the app,
+              creates the native GUI context, and makes that context current.
+            </p>
+            <div class="sources">
+              <strong>Sources</strong>
+              <ul class="source-list">
+                <li><a href="../../src/osapp/osapp.c"><code>src/osapp/osapp.c</code></a></li>
+                <li><a href="../../src/osgui/osguictx.c"><code>src/osgui/osguictx.c</code></a></li>
+                <li><a href="../../src/osapp/osx/osapp_osx.m"><code>src/osapp/osx/osapp_osx.m</code></a></li>
+                <li><a href="../../src/osgui/osx/osgui_osx.ixx"><code>src/osgui/osx/osgui_osx.ixx</code></a></li>
+              </ul>
+            </div>
+          </section>
+
+          <section id="architecture" class="section">
+            <h2>Architecture Overview</h2>
+            <p>
+              The macOS backend uses thin Objective-C subclasses to carry NAppGUI state alongside native Cocoa behavior.
+              Most platform objects are real AppKit objects with extra fields for listeners, control flags, layout integration,
+              and cross-platform bookkeeping.
+            </p>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Wrapper</th>
+                  <th>Native Base</th>
+                  <th>Role</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>OSXAppDelegate</code></td>
+                  <td><code>NSObject &lt;NSApplicationDelegate&gt;</code></td>
+                  <td>Owns runloop callbacks, theme-change deferral, staged termination, and app listener state.</td>
+                </tr>
+                <tr>
+                  <td><code>OSXWindow</code></td>
+                  <td><code>NSPanel</code></td>
+                  <td>Stores role, tabstop state, hotkeys, shared field editor, focus bookkeeping, and window flags.</td>
+                </tr>
+                <tr>
+                  <td><code>OSXWindowDelegate</code></td>
+                  <td><code>NSObject &lt;NSWindowDelegate&gt;</code></td>
+                  <td>Bridges move, resize, close, miniaturize, and overlay deactivation into NAppGUI events.</td>
+                </tr>
+                <tr>
+                  <td><code>OSXView</code></td>
+                  <td><code>NSView</code></td>
+                  <td>Hosts custom drawing, mouse/keyboard listeners, scroll support, focus hooks, and overlay rendering.</td>
+                </tr>
+                <tr>
+                  <td><code>OSXWebView</code></td>
+                  <td><code>WKWebView</code> or <code>NSView</code></td>
+                  <td>Conditional web backend. It becomes a stub <code>NSView</code> when web support is not compiled in.</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <p>
+              The important design point is that the backend is not built around one monolithic window class.
+              Instead, each control family has a native wrapper with shared helper code in files such as <code>oscontrol.m</code>,
+              while the runloop and theme machinery live in separate application and globals modules.
+            </p>
+            <div class="sources">
+              <strong>Sources</strong>
+              <ul class="source-list">
+                <li><a href="../../src/osapp/osx/osapp_osx.m"><code>src/osapp/osx/osapp_osx.m</code></a></li>
+                <li><a href="../../src/osgui/osx/oswindow.m"><code>src/osgui/osx/oswindow.m</code></a></li>
+                <li><a href="../../src/osgui/osx/osview.m"><code>src/osgui/osx/osview.m</code></a></li>
+                <li><a href="../../src/osgui/osx/osweb.m"><code>src/osgui/osx/osweb.m</code></a></li>
+              </ul>
+            </div>
+          </section>
+
+          <section id="lifecycle" class="section">
+            <h2>Application Lifecycle and Run Loop</h2>
+            <p>
+              The lifecycle is centered on <code>OSXAppDelegate</code>. During <code>_osapp_init_imp(...)</code>, NAppGUI acquires
+              <code>NSApplication.sharedApplication</code>, sets its activation policy to regular, activates it, allocates the delegate,
+              stores the cross-platform callback pointers, and installs the delegate on <code>NSApp</code>.
+            </p>
+            <p>
+              When Cocoa reports <code>applicationDidFinishLaunching</code>, the delegate does not just invoke the app callback.
+              It first installs a timer and registers it in three run loop modes:
+            </p>
+            <ul class="bullet-list">
+              <li><code>NSDefaultRunLoopMode</code></li>
+              <li><code>NSEventTrackingRunLoopMode</code></li>
+              <li><code>NSModalPanelRunLoopMode</code></li>
+            </ul>
+            <p>
+              If the cross-platform app provided a frame/update callback, the timer runs every <code>0.01</code> seconds. If not,
+              a slower termination-monitor timer runs every <code>0.25</code> seconds. This keeps the app update path alive during
+              normal interaction, event tracking, and modal loops.
+            </p>
+            <p>
+              Termination is also more careful than a one-shot shutdown. <code>_osapp_terminate_imp(...)</code> sets a staged
+              termination flag, then the timer calls <code>realTerminate</code> across several runloop turns so Cocoa can release
+              deferred objects before the final <code>[NSApp terminate:]</code>.
+            </p>
+            <p>
+              Secondary threads are given their own <code>NSAutoreleasePool</code> via <code>_osapp_begin_thread</code> /
+              <code>_osapp_end_thread</code> to avoid leaking autoreleased Cocoa objects such as images.
+            </p>
+            <div class="sources">
+              <strong>Sources</strong>
+              <ul class="source-list">
+                <li><a href="../../src/osapp/osx/osapp_osx.m"><code>src/osapp/osx/osapp_osx.m</code></a></li>
+                <li><a href="../../src/osapp/osapp.c"><code>src/osapp/osapp.c</code></a></li>
+              </ul>
+            </div>
+          </section>
+
+          <section id="theme" class="section">
+            <h2>Global State and Theme Management</h2>
+            <p>
+              The macOS backend centralizes platform-wide state in <code>osglobals.m</code>. That module computes theme colors,
+              caches rasterized native assets for controls, exposes system cursors, reports screen geometry, and queues idle listeners.
+            </p>
+            <h3>Theme Change Flow</h3>
+            <p>
+              Theme change handling is deferred by design. The application delegate listens for
+              <code>AppleInterfaceThemeChangedNotification</code> and <code>AppleColorPreferencesChangedNotification</code>,
+              but the observer only sets <code>theme_changed = TRUE</code>. The actual refresh happens on the next timer tick,
+              when the new appearance is effective.
+            </p>
+            <p>
+              On that tick, the backend recomputes the cached colors in <code>osglobals_theme_changed()</code>, notifies
+              the optional <code>OnThemeChanged</code> listener, and invalidates cached checkbox and header images.
+            </p>
+            <h3>Dynamic Colors</h3>
+            <p>
+              <code>oscolor.m</code> uses a one-pixel helper view, <code>OSXViewRGBA</code>, to resolve an <code>NSColor</code>
+              into RGBA under the current effective appearance. That matters because dynamic macOS colors depend on light/dark mode
+              and cannot always be treated as fixed component values.
+            </p>
+            <h3>Cached Native Control Chrome</h3>
+            <p>
+              Checkbox and table-header visuals are not hand-painted from scratch. The backend creates real native controls,
+              rasterizes them into <code>NSImage</code> caches, and reuses those images in custom control drawing. There is even a
+              compatibility path for the macOS 26.0 SDK that attaches the view to an offscreen borderless window before caching,
+              because unattached views would otherwise render nothing.
+            </p>
+            <div class="sources">
+              <strong>Sources</strong>
+              <ul class="source-list">
+                <li><a href="../../src/osapp/osx/osapp_osx.m"><code>src/osapp/osx/osapp_osx.m</code></a></li>
+                <li><a href="../../src/osgui/osx/osglobals.m"><code>src/osgui/osx/osglobals.m</code></a></li>
+                <li><a href="../../src/osgui/osx/oscolor.m"><code>src/osgui/osx/oscolor.m</code></a></li>
+              </ul>
+            </div>
+          </section>
+
+          <section id="windows" class="section">
+            <h2>Window System</h2>
+            <p>
+              Windows are implemented by <code>OSXWindow</code>, a subclass of <code>NSPanel</code>. The instance stores more
+              than the normal Cocoa window state: it tracks NAppGUI window flags, window role, hotkeys, tabstop state, a shared
+              field editor, focus bookkeeping, and whether move/resize events should currently be emitted.
+            </p>
+
+            <h3>Resize and Close Semantics</h3>
+            <p>
+              <code>OSXWindowDelegate.windowWillResize</code> converts the incoming frame size into a content size,
+              emits <code>ekGUI_EVENT_WND_SIZING</code>, then immediately emits <code>ekGUI_EVENT_WND_SIZE</code> with the constrained result,
+              and finally returns a new frame size computed from the requested content size. That means the macOS backend performs
+              layout-aware size negotiation before Cocoa commits the resize.
+            </p>
+            <p>
+              Close handling is centralized in <code>i_close(...)</code>. It checks whether the current focus chain allows closing,
+              packages the close origin into <code>EvWinClose</code>, and lets the registered NAppGUI listener veto the close.
+            </p>
+
+            <h3>Keyboard Routing</h3>
+            <p>
+              <code>OSXWindow.processKeyDown</code> handles tab traversal, return/default-button behavior, escape behavior, and hotkeys
+              before falling back to Cocoa. Return can trigger the default push button, optional window-close semantics, or both depending
+              on the window flags. Escape can generate a close notification without immediately delegating to Cocoa.
+            </p>
+
+            <h3>Field Editor</h3>
+            <p>
+              Each window lazily creates an <code>OSXText</code> field editor in <code>windowWillReturnFieldEditor</code>.
+              NAppGUI reuses that editor per window and switches it between field-editor and regular text-view modes depending on the client control.
+            </p>
+
+            <h3>Launch Modes</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Mode</th>
+                  <th>Backend Role</th>
+                  <th>Native Behavior</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Regular launch</td>
+                  <td><code>ekGUI_ROLE_MAIN</code> or <code>ekGUI_ROLE_OVERLAY</code></td>
+                  <td>Main windows use <code>orderFrontRegardless</code>; child overlays use <code>makeKeyAndOrderFront</code>.</td>
+                </tr>
+                <tr>
+                  <td>Hide</td>
+                  <td>role cleared</td>
+                  <td><code>orderOut</code> with either the parent or the window itself as the sender.</td>
+                </tr>
+                <tr>
+                  <td>Modal launch</td>
+                  <td><code>ekGUI_ROLE_MODAL</code></td>
+                  <td>Disables <code>worksWhenModal</code> on the parent, fronts the window, then calls <code>[NSApp runModalForWindow:]</code>.</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <p>
+              The code deliberately prefers <code>orderFrontRegardless</code> for the first window instead of relying only on
+              <code>makeKeyAndOrderFront(nil)</code>, with comments noting changed or noisy AppKit behavior on newer macOS releases.
+            </p>
+            <div class="sources">
+              <strong>Sources</strong>
+              <ul class="source-list">
+                <li><a href="../../src/osgui/osx/oswindow.m"><code>src/osgui/osx/oswindow.m</code></a></li>
+              </ul>
+            </div>
+          </section>
+
+          <section id="controls" class="section">
+            <h2>Control System and Text Layer</h2>
+            <p>
+              Shared control behavior lives in <code>oscontrol.m</code>. Controls start hidden, attach to parents through
+              <code>addSubview</code>, detach through <code>removeFromSuperviewWithoutNeedingDisplay</code>, and use common helpers
+              for size, alignment, text color, control size, tooltips, enable/disable state, and coordinate conversion.
+            </p>
+            <p>
+              Text-bearing controls use <code>OSTextAttr</code>, which stores:
+            </p>
+            <ul class="bullet-list">
+              <li>the active <code>Font</code></li>
+              <li>the current text color</li>
+              <li>horizontal alignment</li>
+              <li>an optional marked character position for underlining</li>
+            </ul>
+            <p>
+              Text updates are applied as attributed strings. The helper builds an attribute dictionary for underline, strikeout,
+              paragraph style, foreground color, and font, then writes that attributed string into the native cell.
+              This is why text styling is consistent across wrapper controls such as popups and buttons.
+            </p>
+            <p>
+              Not every control owns its text stack directly. For example, <code>oscombo.m</code> wraps an <code>NSComboBox</code>
+              but delegates most text behavior to an internal text-field helper, while <code>ospopup.m</code> stores a local
+              <code>OSTextAttr</code> and updates the <code>NSPopUpButton</code> title styling through shared helpers.
+            </p>
+            <div class="sources">
+              <strong>Sources</strong>
+              <ul class="source-list">
+                <li><a href="../../src/osgui/osx/oscontrol.m"><code>src/osgui/osx/oscontrol.m</code></a></li>
+                <li><a href="../../src/osgui/osx/oscombo.m"><code>src/osgui/osx/oscombo.m</code></a></li>
+                <li><a href="../../src/osgui/osx/ospopup.m"><code>src/osgui/osx/ospopup.m</code></a></li>
+              </ul>
+            </div>
+          </section>
+
+          <section id="views" class="section">
+            <h2>Custom Views and Event Routing</h2>
+            <p>
+              <code>OSXView</code> is the generic custom-view surface used by NAppGUI for owner-drawn controls and general custom content.
+              It can carry scroll state, a lazily-created drawing context, mouse tracking, listener tables, focus listeners, and a separate overlay listener.
+            </p>
+
+            <h3>Drawing Path</h3>
+            <p>
+              In <code>drawRect</code>, the backend wraps the current <code>NSGraphicsContext</code> in a NAppGUI <code>DCtx</code>,
+              marks whether the view is flipped, and dispatches <code>ekGUI_EVENT_DRAW</code>. If an overlay listener is present, it then performs a second draw pass using the same <code>DCtx</code>.
+            </p>
+            <p>
+              OpenGL views are treated differently. When the <code>ekVIEW_OPENGL</code> flag is set, <code>OSXView</code> skips the normal
+              <code>NSGraphicsContext</code> wrapping and dispatches the draw callback directly.
+            </p>
+
+            <h3>Input Routing</h3>
+            <p>
+              Mouse entered, exited, moved, down, up, drag, scroll-wheel, key-down, key-up, and modifier-flag changes are all bridged through
+              <code>_oslistener_*</code> helpers. Scrollable views first translate wheel movement into scroll events before forwarding the raw wheel event.
+            </p>
+            <p>
+              Focus-ring behavior is also split by OS version. Newer systems use the normal focus-ring type, while older macOS targets have an explicit
+              focus-ring drawing fallback in <code>drawRect</code>.
+            </p>
+            <div class="sources">
+              <strong>Sources</strong>
+              <ul class="source-list">
+                <li><a href="../../src/osgui/osx/osview.m"><code>src/osgui/osx/osview.m</code></a></li>
+                <li><a href="../../src/osgui/osx/oswindow.m"><code>src/osgui/osx/oswindow.m</code></a></li>
+              </ul>
+            </div>
+          </section>
+
+          <section id="drawing" class="section">
+            <h2>Drawing and Image Pipeline</h2>
+            <p>
+              The macOS <code>draw2d</code> backend uses Core Graphics under the hood. <code>draw_osx.m</code> manages
+              <code>CGContextRef</code> transforms, raster vs real-2D mode switching, path operations, gradients, strokes, fills,
+              and text measurement through Cocoa font attributes.
+            </p>
+            <p>
+              The custom-control drawing helper in <code>osdrawctrl.m</code> sits on top of that layer. It paints backgrounds,
+              focus outlines, header chrome, and checkbox visuals using the theme colors and cached native images supplied by <code>osglobals.m</code>.
+            </p>
+
+            <h3>Image Representation</h3>
+            <p>
+              <code>osimage.m</code> treats the macOS image payload as an <code>NSImage</code> with one main <code>NSBitmapImageRep</code>.
+              It supports creating images from raw pixels, encoded data, file types, and drawing contexts.
+              Scaling uses a <code>CGBitmapContext</code>, and codec export uses <code>NSBitmapImageRep.representationUsingType</code>.
+            </p>
+            <p>
+              A few implementation details are worth knowing:
+            </p>
+            <ul class="bullet-list">
+              <li><code>osimage_create_from_data</code> normalizes <code>NSImage</code> size to the bitmap size because they can disagree.</li>
+              <li><code>osimage_write</code> special-cases BMP export by transcoding through JPEG first to avoid corrupted palette-based BMP output.</li>
+              <li>Animated images expose frame count and per-frame duration through <code>NSBitmapImageRep</code> properties.</li>
+            </ul>
+            <div class="sources">
+              <strong>Sources</strong>
+              <ul class="source-list">
+                <li><a href="../../src/draw2d/osx/draw_osx.m"><code>src/draw2d/osx/draw_osx.m</code></a></li>
+                <li><a href="../../src/osgui/osx/osdrawctrl.m"><code>src/osgui/osx/osdrawctrl.m</code></a></li>
+                <li><a href="../../src/draw2d/osx/osimage.m"><code>src/draw2d/osx/osimage.m</code></a></li>
+              </ul>
+            </div>
+          </section>
+
+          <section id="webview" class="section">
+            <h2>WebView Support Model</h2>
+            <p>
+              Web content support on macOS is conditional. In <code>osweb.m</code>, <code>OSXWebView</code> is a real
+              <code>WKWebView</code> only when <code>NAPPGUI_WEB_SUPPORT</code> is defined and the deployment target is at least macOS 10.10.
+              Otherwise the same type falls back to a plain <code>NSView</code> stub.
+            </p>
+            <p>
+              That means the API surface always exists, but behavior changes depending on the build configuration:
+            </p>
+            <ul class="bullet-list">
+              <li><code>ekGUI_WEB_NAVIGATE</code>, back, and forward work only with real <code>WKWebView</code> support.</li>
+              <li>Some functions such as scroller visibility are currently no-ops.</li>
+              <li>Clipboard support is not implemented and asserts.</li>
+            </ul>
+            <p>
+              The build system enables this support only when <code>NAPPGUI_WEB</code> is on and the macOS deployment target is greater than <code>10.9.9999</code>.
+            </p>
+            <div class="sources">
+              <strong>Sources</strong>
+              <ul class="source-list">
+                <li><a href="../../src/osgui/osx/osweb.m"><code>src/osgui/osx/osweb.m</code></a></li>
+                <li><a href="../../prj/NAppUtils.cmake"><code>prj/NAppUtils.cmake</code></a></li>
+                <li><a href="../../prj/NAppTarget.cmake"><code>prj/NAppTarget.cmake</code></a></li>
+              </ul>
+            </div>
+          </section>
+
+          <section id="verified-notes" class="section">
+            <h2>Key Verified Backend Notes</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Area</th>
+                  <th>Verified State in This Checkout</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Verification basis</td>
+                  <td>This page is grounded in commit <code>2b009960</code> from <code>2026-03-17</code> and the current repository files.</td>
+                </tr>
+                <tr>
+                  <td>Theme handling</td>
+                  <td>Theme updates are explicitly deferred to the next timer tick after distributed notifications, then routed through <code>osglobals_theme_changed()</code> and the optional listener.</td>
+                </tr>
+                <tr>
+                  <td>WebView support</td>
+                  <td>WebView support is conditional. Without <code>NAPPGUI_WEB_SUPPORT</code>, the macOS web wrapper is a stub <code>NSView</code>, not a real browser view.</td>
+                </tr>
+                <tr>
+                  <td>Native styling</td>
+                  <td>Checkbox and header visuals are actually cached rasterizations of native controls, not generic custom painting from scratch.</td>
+                </tr>
+                <tr>
+                  <td>Termination flow</td>
+                  <td>Termination is staged across timer cycles to let Cocoa drain pending releases before final shutdown.</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="sources">
+              <strong>Sources</strong>
+              <ul class="source-list">
+                <li><a href="../../src/osapp/osx/osapp_osx.m"><code>src/osapp/osx/osapp_osx.m</code></a></li>
+                <li><a href="../../src/osgui/osx/osglobals.m"><code>src/osgui/osx/osglobals.m</code></a></li>
+                <li><a href="../../src/osgui/osx/osweb.m"><code>src/osgui/osx/osweb.m</code></a></li>
+              </ul>
+            </div>
+          </section>
+
+          <section id="reading" class="section">
+            <h2>Recommended Reading Order</h2>
+            <ol class="bullet-list">
+              <li><a href="../../src/osapp/osx/osapp_osx.m"><code>src/osapp/osx/osapp_osx.m</code></a> for startup, timers, theme notification, and termination.</li>
+              <li><a href="../../src/osgui/osx/oswindow.m"><code>src/osgui/osx/oswindow.m</code></a> for window roles, key routing, modal behavior, and the shared field editor.</li>
+              <li><a href="../../src/osgui/osx/osglobals.m"><code>src/osgui/osx/osglobals.m</code></a> plus <a href="../../src/osgui/osx/oscolor.m"><code>src/osgui/osx/oscolor.m</code></a> for theme colors, cached native chrome, and cursor/system services.</li>
+              <li><a href="../../src/osgui/osx/oscontrol.m"><code>src/osgui/osx/oscontrol.m</code></a>, <a href="../../src/osgui/osx/oscombo.m"><code>src/osgui/osx/oscombo.m</code></a>, and <a href="../../src/osgui/osx/ospopup.m"><code>src/osgui/osx/ospopup.m</code></a> for the shared control/text layer.</li>
+              <li><a href="../../src/osgui/osx/osview.m"><code>src/osgui/osx/osview.m</code></a> for custom view drawing and event routing.</li>
+              <li><a href="../../src/draw2d/osx/draw_osx.m"><code>src/draw2d/osx/draw_osx.m</code></a>, <a href="../../src/osgui/osx/osdrawctrl.m"><code>src/osgui/osx/osdrawctrl.m</code></a>, and <a href="../../src/draw2d/osx/osimage.m"><code>src/draw2d/osx/osimage.m</code></a> for rendering and image handling.</li>
+              <li><a href="../../src/osgui/osx/osweb.m"><code>src/osgui/osx/osweb.m</code></a> plus <a href="../../prj/NAppUtils.cmake"><code>prj/NAppUtils.cmake</code></a> for the conditional web story.</li>
+            </ol>
+          </section>
+        </article>
+      </main>
+    </div>
+
+    <aside class="toc"></aside>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

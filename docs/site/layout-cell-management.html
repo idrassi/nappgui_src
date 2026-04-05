@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Layout and Cell Management | NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="layout-cell-management">
+  <div class="layout">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrap">
+      <main class="article">
+        <article class="article-card">
+          <p class="eyebrow">Foundations</p>
+          <h1 class="page-title">Layout and Cell Management</h1>
+          <p class="lead">
+            NAppGUI's layout system is a recursive grid composer. <code>Layout</code> owns the rows, columns,
+            and cells; <code>Cell</code> stores per-item visibility, alignment, sizing, padding, and DBind state;
+            <code>Panel</code> and <code>Window</code> host the final composed tree.
+          </p>
+
+          <div class="callout warn">
+            The source comment above <code>_layout_compose()</code> explicitly describes the engine as a
+            constraint-satisfaction algorithm with separate compose and locate phases.
+          </div>
+
+          <section id="sources" class="section">
+            <h2>Relevant Source Files</h2>
+            <div class="source-pills">
+              <a class="pill" href="../../src/gui/layout.h"><code>src/gui/layout.h</code></a>
+              <a class="pill" href="../../src/gui/cell.h"><code>src/gui/cell.h</code></a>
+              <a class="pill" href="../../src/gui/layout.c"><code>src/gui/layout.c</code></a>
+              <a class="pill" href="../../src/gui/panel.h"><code>src/gui/panel.h</code></a>
+              <a class="pill" href="../../src/gui/panel.c"><code>src/gui/panel.c</code></a>
+              <a class="pill" href="../../src/gui/window.h"><code>src/gui/window.h</code></a>
+              <a class="pill" href="../../src/gui/window.c"><code>src/gui/window.c</code></a>
+            </div>
+          </section>
+
+          <section id="model" class="section">
+            <h2>Layout and Cell Model</h2>
+            <p>
+              A <code>Layout</code> is created with a fixed grid size and each position is represented by a
+              <code>Cell</code>. A cell can hold either a <code>GuiComponent</code>, another nested <code>Layout</code>,
+              or remain empty. The public surface reflects that model through paired setters/getters such as
+              <code>layout_button(...)</code> and <code>layout_get_button(...)</code>.
+            </p>
+            <p>
+              Beyond content, each cell tracks enabled/visible state, tabstop participation, per-axis alignment,
+              forced size, computed final size/origin, and padding. The surrounding <code>Layout</code> tracks line sizes,
+              expand weights, margins, background/stroke colors, DBind metadata, and a pointer back to its owning panel.
+            </p>
+          </section>
+
+          <section id="compose" class="section">
+            <h2>Compose Algorithm</h2>
+            <p>
+              Composition happens in two distinct phases. First, <code>_layout_natural()</code> walks the tree to compute
+              the natural width and height. Then <code>_layout_expand()</code> grows or shrinks each dimension to satisfy an
+              externally required size. Only after that does <code>_layout_locate()</code> assign final origins and call the
+              component-specific frame setters.
+            </p>
+            <p>
+              Width is solved before height because some widgets have height that depends on width, especially multi-line text.
+              The code comment is explicit about the intent: compose manipulates numbers only, so it stays fast and defers native
+              window/control updates to the locate pass.
+            </p>
+          </section>
+
+          <section id="controls" class="section">
+            <h2>Sizing, Alignment, and Visibility Controls</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Area</th>
+                  <th>Representative API</th>
+                  <th>Effect</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Grid shape</td>
+                  <td><code>layout_insert_col</code>, <code>layout_remove_row</code></td>
+                  <td>Changes the logical matrix after creation.</td>
+                </tr>
+                <tr>
+                  <td>Explicit sizing</td>
+                  <td><code>layout_hsize</code>, <code>layout_vsize</code>, <code>cell_force_size</code></td>
+                  <td>Overrides natural size for lines or individual cells.</td>
+                </tr>
+                <tr>
+                  <td>Expansion</td>
+                  <td><code>layout_hexpand*</code>, <code>layout_vexpand*</code></td>
+                  <td>Assigns resize weights when a window or panel is larger than natural size.</td>
+                </tr>
+                <tr>
+                  <td>Alignment and padding</td>
+                  <td><code>layout_halign</code>, <code>layout_valign</code>, <code>cell_padding*</code></td>
+                  <td>Controls where the composed content sits inside each partition.</td>
+                </tr>
+                <tr>
+                  <td>Visibility and tab order</td>
+                  <td><code>layout_show_col</code>, <code>layout_show_row</code>, <code>layout_taborder</code>, <code>layout_tabstop</code></td>
+                  <td>Removes lines from layout flow and controls keyboard navigation order.</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section id="panels" class="section">
+            <h2>Panels Are Layout Hosts, Not Just Containers</h2>
+            <p>
+              A <code>Panel</code> does not own just one layout. Internally it keeps an <code>ArrPt(Layout)</code> plus
+              <code>visible_layout</code> and <code>active_layout</code> indices. <code>panel_layout(...)</code> appends layouts,
+              and <code>panel_visible_layout(...)</code> switches which one is active. When the active layout changes, the panel
+              re-attaches the right children and composes the new tree.
+            </p>
+            <p>
+              That matters because it means panel-level view switching is a first-class feature of the library, not a user-built convention.
+              Scroll sizes, invalidation, and child attachment are all managed at the panel layer.
+            </p>
+          </section>
+
+          <section id="windows" class="section">
+            <h2>Window Integration</h2>
+            <p>
+              <code>window_panel(...)</code> does not attach a panel directly. It creates an internal <code>1x1</code> layout,
+              places the panel in cell <code>(0, 0)</code>, and makes that layout the window's <code>main_layout</code>. On resize,
+              the window asks <code>_layout_compose()</code> to negotiate a constrained content size and then runs
+              <code>_layout_locate()</code> to push frames into the real controls.
+            </p>
+            <p>
+              This explains why layout behavior is the same whether the tree is nested inside another layout, mounted into a panel,
+              or used as the root content of a top-level window.
+            </p>
+          </section>
+        </article>
+      </main>
+    </div>
+
+    <aside class="toc"></aside>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

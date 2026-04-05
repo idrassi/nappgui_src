@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Memory Management and Core Types | NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="memory-management-core-types">
+  <div class="layout">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrap">
+      <main class="article">
+        <article class="article-card">
+          <p class="eyebrow">Core</p>
+          <h1 class="page-title">Memory Management and Core Types</h1>
+          <p class="lead">
+            Core memory and container usage in NAppGUI is macro-heavy but consistent. The heap API provides typed allocation helpers,
+            while arrays and other containers expose a generic implementation wrapped in type-safe macros.
+          </p>
+
+          <section id="sources" class="section">
+            <h2>Relevant Source Files</h2>
+            <div class="source-pills">
+              <a class="pill" href="../../src/core/heap.h"><code>src/core/heap.h</code></a>
+              <a class="pill" href="../../src/core/arrpt.h"><code>src/core/arrpt.h</code></a>
+              <a class="pill" href="../../src/core/arrst.h"><code>src/core/arrst.h</code></a>
+              <a class="pill" href="../../src/core/core.cpp"><code>src/core/core.cpp</code></a>
+              <a class="pill" href="../../src/core/coreall.h"><code>src/core/coreall.h</code></a>
+            </div>
+          </section>
+
+          <section id="heap" class="section">
+            <h2>Heap API</h2>
+            <p>
+              <code>heap.h</code> exposes both raw and typed allocation helpers. At the low level there are named allocation functions such as
+              <code>heap_malloc_imp</code>, <code>heap_calloc_imp</code>, aligned variants, reallocation, and explicit free. At the common call-site level,
+              the macros are the real interface: <code>heap_new</code>, <code>heap_new0</code>, <code>heap_new_n</code>, <code>heap_realloc_n</code>,
+              <code>heap_delete</code>, and <code>heap_delete_n</code>.
+            </p>
+            <p>
+              The layer also includes verbosity, stats, leak detection, and auditor helpers, which is why the header describes it as an allocator and auditor,
+              not just a malloc wrapper.
+            </p>
+          </section>
+
+          <section id="containers" class="section">
+            <h2>Typed Containers</h2>
+            <p>
+              <code>ArrPt</code> is the pointer-array family and <code>ArrSt</code> is the value-array family. Both are implemented as generic arrays underneath,
+              but the public macros make the call sites type-aware: create, destroy, clear, insert, append, delete, sort, search, read/write, and iteration.
+            </p>
+            <p>
+              The iteration macros are worth noting because they shape a lot of the codebase style. Patterns like <code>arrpt_foreach(...)</code>,
+              <code>arrst_foreach(...)</code>, and the matching <code>arrpt_end()</code>/<code>arrst_end()</code> appear throughout <code>gui</code>,
+              <code>osgui</code>, and <code>core</code>.
+            </p>
+          </section>
+
+          <section id="registration" class="section">
+            <h2>Containers As DBind Types</h2>
+            <p>
+              A subtle but important part of <code>core.cpp</code> is that it registers <code>ArrPt</code> and <code>ArrSt</code> as DBind container types during
+              <code>core_start()</code>. That is what allows DBind-backed serialization and comparison logic to treat these containers as first-class typed values.
+            </p>
+            <p>
+              The runtime differentiates between pointer-storing and value-storing containers, which matches the public split between <code>ArrPt</code> and <code>ArrSt</code>.
+            </p>
+          </section>
+
+          <section id="style" class="section">
+            <h2>Practical Style of The Codebase</h2>
+            <p>
+              The project consistently prefers small C structs plus typed macro wrappers over templates or code generation. You see this not just in arrays,
+              but also in sets, strings, object handles, and many internal helper patterns.
+            </p>
+            <p>
+              If you are reading or extending the codebase, it helps to treat these macros as the intended language of the project rather than as mere convenience wrappers.
+            </p>
+          </section>
+        </article>
+      </main>
+    </div>
+
+    <aside class="toc"></aside>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

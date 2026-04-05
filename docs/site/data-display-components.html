@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Data Display Components | NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="data-display-components">
+  <div class="layout">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrap">
+      <main class="article">
+        <article class="article-card">
+          <p class="eyebrow">GUI</p>
+          <h1 class="page-title">Data Display Components</h1>
+          <p class="lead">
+            NAppGUI's main data-oriented widgets are <code>ListBox</code> and <code>TableView</code>. Both expose
+            higher-level list/table behavior at the public API, but their implementation sits on top of the custom-view stack
+            instead of delegating everything to a native list widget.
+          </p>
+
+          <section id="sources" class="section">
+            <h2>Relevant Source Files</h2>
+            <div class="source-pills">
+              <a class="pill" href="../../src/gui/listbox.h"><code>src/gui/listbox.h</code></a>
+              <a class="pill" href="../../src/gui/tableview.h"><code>src/gui/tableview.h</code></a>
+              <a class="pill" href="../../src/gui/view.h"><code>src/gui/view.h</code></a>
+              <a class="pill" href="../../src/gui/listbox.c"><code>src/gui/listbox.c</code></a>
+              <a class="pill" href="../../src/gui/tableview.c"><code>src/gui/tableview.c</code></a>
+            </div>
+          </section>
+
+          <section id="listbox" class="section">
+            <h2>ListBox</h2>
+            <p>
+              <code>ListBox</code> manages a sequence of rows with text, optional images, optional checkboxes, optional multiselection,
+              per-row foreground color, explicit selection state, and explicit check state. The public listener surface separates
+              <code>OnDown</code> from <code>OnSelect</code>, which is useful for controls that need press handling distinct from final selection.
+            </p>
+            <p>
+              The API shape shows that the widget is not just a platform list wrapper: row attributes like per-item image/color/check state
+              are part of the portable surface, and the implementation is routed through the custom-view layer.
+            </p>
+          </section>
+
+          <section id="tableview" class="section">
+            <h2>TableView</h2>
+            <p>
+              <code>TableView</code> is a richer data grid with explicit listener hooks for data requests, selection, row click,
+              and header click. It exposes text columns, optional per-cell icons with per-column icon sizing/margins,
+              per-column width/limits/alignment/resizability, frozen columns, header title/indicator/visibility/clickability,
+              row height, grid lines, multiselect, focus-row control, and explicit scroll-visibility management.
+            </p>
+            <p>
+              The design is closer to a portable grid framework than a minimal wrapper. Applications provide behavior through listeners
+              and configure structure through column/header APIs.
+            </p>
+          </section>
+
+          <section id="viewbase" class="section">
+            <h2>Shared View Infrastructure</h2>
+            <p>
+              A key implementation detail is that both widgets are built on the same custom-view substrate used by <code>View</code>,
+              <code>Label</code>, and <code>ImageView</code>. That gives them portable drawing, custom mouse/keyboard routing, and a consistent
+              update path through the <code>draw2d</code> backend instead of forcing every platform backend to provide a native equivalent.
+            </p>
+            <p>
+              The trade-off is deliberate: NAppGUI chooses a richer cross-platform feature surface over strict dependence on whatever list/table
+              widget each OS exposes.
+            </p>
+          </section>
+
+          <section id="choosing" class="section">
+            <h2>When To Use Which Widget</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Widget</th>
+                  <th>Best Fit</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>ListBox</code></td>
+                  <td>Single-column lists with optional images, row coloring, and checkbox or multiselect behavior.</td>
+                </tr>
+                <tr>
+                  <td><code>TableView</code></td>
+                  <td>Multi-column data presentation with headers, sortable/clickable header semantics, and focus/selection control.</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+        </article>
+      </main>
+    </div>
+
+    <aside class="toc"></aside>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Core Architecture | NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="core-architecture">
+  <div class="layout">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrap">
+      <main class="article">
+        <article class="article-card">
+          <p class="eyebrow">Foundations</p>
+          <h1 class="page-title">Core Architecture</h1>
+          <p class="lead">
+            The main architectural story in NAppGUI is layered initialization plus strict separation between high-level UI composition
+            and the native backend implementation. The result is a portable public API over real native platform code.
+          </p>
+
+          <section id="sources" class="section">
+            <h2>Relevant Source Files</h2>
+            <div class="source-pills">
+              <a class="pill" href="../../CMakeTargets.cmake"><code>CMakeTargets.cmake</code></a>
+              <a class="pill" href="../../src/core/core.cpp"><code>src/core/core.cpp</code></a>
+              <a class="pill" href="../../src/draw2d/draw2d.c"><code>src/draw2d/draw2d.c</code></a>
+              <a class="pill" href="../../src/osgui/osgui.c"><code>src/osgui/osgui.c</code></a>
+              <a class="pill" href="../../src/gui/gui.c"><code>src/gui/gui.c</code></a>
+              <a class="pill" href="../../src/osapp/osapp.c"><code>src/osapp/osapp.c</code></a>
+              <a class="pill" href="../../src/core/event.h"><code>src/core/event.h</code></a>
+              <a class="pill" href="../../src/core/respack.c"><code>src/core/respack.c</code></a>
+            </div>
+          </section>
+
+          <section id="layers" class="section">
+            <h2>Layer Model</h2>
+            <p>
+              The library graph is not accidental. Each layer introduces one kind of abstraction:
+            </p>
+            <ul class="bullet-list">
+              <li><code>sewer</code> and <code>osbs</code> provide low-level utilities and OS services.</li>
+              <li><code>core</code> adds containers, streams, events, DBind, and resource packs.</li>
+              <li><code>geom2d</code> and <code>draw2d</code> add geometry, imaging, fonts, and drawing contexts.</li>
+              <li><code>osgui</code> implements native widgets and windows for one platform.</li>
+              <li><code>gui</code> composes widgets, layouts, panels, and data binding against the abstract backend.</li>
+              <li><code>osapp</code> owns the application lifecycle and connects the UI stack to the native event loop.</li>
+            </ul>
+          </section>
+
+          <section id="startup" class="section">
+            <h2>Startup Chain</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Function</th>
+                  <th>Main Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>core_start()</code></td>
+                  <td>Starts <code>osbs</code>, heap, stream, and DBind; registers built-in scalar, string, and container types.</td>
+                </tr>
+                <tr>
+                  <td><code>draw2d_start()</code></td>
+                  <td>Starts <code>core</code>, allocates font/image globals, and registers <code>Image</code> as a DBind binary type.</td>
+                </tr>
+                <tr>
+                  <td><code>osgui_start()</code></td>
+                  <td>Starts <code>draw2d</code> and the platform GUI backend.</td>
+                </tr>
+                <tr>
+                  <td><code>gui_start()</code></td>
+                  <td>Starts <code>draw2d</code>, resource packs, windows, menus, colors, notifications, and transitions.</td>
+                </tr>
+                <tr>
+                  <td><code>osmain_imp()</code></td>
+                  <td>Starts <code>osgui</code> and <code>gui</code>, creates the native <code>GuiCtx</code>, and enters the platform runloop.</td>
+                </tr>
+              </tbody>
+            </table>
+            <p>
+              Because both <code>gui</code> and <code>osgui</code> sit on top of <code>draw2d</code>, the architecture avoids a direct high-level-to-native compile-time dependency.
+            </p>
+          </section>
+
+          <section id="events" class="section">
+            <h2>Events and Notifications</h2>
+            <p>
+              NAppGUI uses a typed listener model rather than a string-based event bus. A <code>Listener</code> stores an object plus a handler,
+              and an <code>Event</code> carries the event type, sender, params, and result. In debug builds the framework also tracks type names
+              for sender, params, and result and asserts that handlers read them consistently.
+            </p>
+            <p>
+              This same event model is used for button clicks, window close notifications, draw callbacks, DBind object-change events, theme changes,
+              and idle notifications.
+            </p>
+          </section>
+
+          <section id="resources" class="section">
+            <h2>Resources and Localization</h2>
+            <p>
+              Resource loading is built into the architecture, not bolted on. The core <code>ResPack</code> layer supports embedded and packed assets,
+              while the <code>gui</code> layer adds high-level registration and language selection through <code>gui_respack()</code> and <code>gui_language()</code>.
+            </p>
+            <p>
+              This is why many demos register a resource pack before constructing windows: localized strings, images, and binary assets are part of the normal application model.
+            </p>
+          </section>
+
+          <section id="extensions" class="section">
+            <h2>Extension Libraries</h2>
+            <p>
+              The architecture also leaves room for non-UI layers:
+            </p>
+            <ul class="bullet-list">
+              <li><code>encode</code> builds on <code>core</code> for JSON, URL, and base64 helpers.</li>
+              <li><code>inet</code> adds HTTP on top of <code>encode</code>.</li>
+              <li><code>ogl3d</code> adds platform OpenGL context management without depending on the full GUI umbrella.</li>
+            </ul>
+          </section>
+        </article>
+      </main>
+    </div>
+
+    <aside class="toc"></aside>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

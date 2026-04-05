@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OGL3D Internals | NAppGUI Local Docs</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="ogl3d-internals">
+  <div class="layout">
+    <aside class="sidebar"></aside>
+
+    <div class="main-wrap">
+      <main class="article">
+        <article class="article-card">
+          <p class="eyebrow">Core</p>
+          <h1 class="page-title">OGL3D Internals</h1>
+          <p class="lead">
+            <code>ogl3d</code> is a very small library with a narrow purpose: create an OpenGL context for a native view,
+            make that context current for drawing, swap the buffers, and report failures in a portable way. It does not
+            abstract OpenGL itself, and it does not sit inside <code>draw2d</code>.
+          </p>
+
+          <section id="sources" class="section">
+            <h2>Relevant Source Files</h2>
+            <div class="source-pills">
+              <a class="pill" href="../../src/ogl3d/CMakeLists.txt"><code>src/ogl3d/CMakeLists.txt</code></a>
+              <a class="pill" href="../../src/ogl3d/ogl3d.h"><code>src/ogl3d/ogl3d.h</code></a>
+              <a class="pill" href="../../src/ogl3d/ogl3d.hxx"><code>src/ogl3d/ogl3d.hxx</code></a>
+              <a class="pill" href="../../src/ogl3d/ogl3d.c"><code>src/ogl3d/ogl3d.c</code></a>
+              <a class="pill" href="../../src/ogl3d/ogl3d.inl"><code>src/ogl3d/ogl3d.inl</code></a>
+              <a class="pill" href="../../src/ogl3d/osx/ogl3dimp.m"><code>src/ogl3d/osx/ogl3dimp.m</code></a>
+              <a class="pill" href="../../src/ogl3d/win/ogl3dimp.c"><code>src/ogl3d/win/ogl3dimp.c</code></a>
+              <a class="pill" href="../../src/ogl3d/gtk/ogl3dimp.c"><code>src/ogl3d/gtk/ogl3dimp.c</code></a>
+              <a class="pill" href="../../demo/glhello/glhello.c"><code>demo/glhello/glhello.c</code></a>
+              <a class="pill" href="../../demo/glhello/ogl1.c"><code>demo/glhello/ogl1.c</code></a>
+              <a class="pill" href="../../demo/glhello/ogl2.c"><code>demo/glhello/ogl2.c</code></a>
+              <a class="pill" href="../../demo/glhello/ogl3.c"><code>demo/glhello/ogl3.c</code></a>
+            </div>
+          </section>
+
+          <section id="boundary" class="section">
+            <h2>Library Boundary</h2>
+            <p>
+              The target is declared as <code>nap_library(ogl3d "sewer" ...)</code>. That is an important architectural signal:
+              <code>ogl3d</code> does not depend on <code>core</code>, <code>draw2d</code>, <code>gui</code>, or <code>osgui</code>.
+              It only needs the low-level support layer plus the platform OpenGL libraries wired in through the build system.
+            </p>
+            <p>
+              Because of that, the public API takes a raw native view pointer as <code>void *</code>. The higher GUI layer is responsible
+              for producing that handle, which is why the demos call <code>view_native(view)</code> before creating an OpenGL context.
+            </p>
+          </section>
+
+          <section id="lifecycle" class="section">
+            <h2>Lifecycle And Leak Checks</h2>
+            <p>
+              <code>ogl3d_start()</code> and <code>ogl3d_finish()</code> are much lighter than the equivalent functions in
+              <code>core</code> or <code>draw2d</code>. They only maintain a user count. On the last <code>ogl3d_finish()</code>,
+              the library asserts if the number of context allocations and deallocations does not match.
+            </p>
+            <p>
+              That means <code>ogl3d</code> actively checks for leaked <code>OGLCtx</code> objects but does not own a wider runtime stack.
+              It is a thin portability layer, not a subsystem bootstrapper.
+            </p>
+          </section>
+
+          <section id="contract" class="section">
+            <h2>Public Contract</h2>
+            <p>
+              The portable API surface is small and stable:
+            </p>
+            <ul class="bullet-list">
+              <li><strong><code>ogl3d_context(...)</code>:</strong> create a platform context from <code>OGLProps</code> and a native view handle.</li>
+              <li><strong><code>ogl3d_begin_draw(...)</code> / <code>ogl3d_end_draw(...)</code>:</strong> make the context current, then flush or swap the back buffer.</li>
+              <li><strong><code>ogl3d_set_size(...)</code>:</strong> notify the backend about size changes when it cares.</li>
+              <li><strong><code>ogl3d_destroy(...)</code>:</strong> tear the context down and update the allocation counters.</li>
+              <li><strong><code>ogl3d_err_str(...)</code>:</strong> map portable error codes to user-facing strings.</li>
+            </ul>
+            <p>
+              The error enum is intentionally coarse: API version missing, fullscreen unsupported, view binding failure, pixel format failure,
+              context creation failure, or GLEW initialization failure.
+            </p>
+          </section>
+
+          <section id="props" class="section">
+            <h2>What OGLProps Controls</h2>
+            <p>
+              <code>OGLProps</code> exposes the requested OpenGL API level, accelerated versus fallback rendering, color/depth/stencil sizes,
+              auxiliary buffer count, transparency, and an optional shared context. The platform backends all consume the same structure,
+              but each interprets it through native APIs.
+            </p>
+            <p>
+              The shared-context field is real and wired through on every desktop backend in this checkout. On Windows it uses
+              <code>wglShareLists</code>, on macOS it passes the existing <code>NSOpenGLContext</code> into <code>shareContext:</code>,
+              and on GTK/EGL it forwards the existing EGL context pointer when creating the new one.
+            </p>
+          </section>
+
+          <section id="versions" class="section">
+            <h2>Version Validation Uses GLEW</h2>
+            <p>
+              Context creation does not stop at the native API call. After the backend creates and binds a context, <code>ogl3d</code>
+              runs <code>glewInit()</code> and then checks the requested version against the relevant <code>GLEW_VERSION_x_y</code> flag.
+            </p>
+            <p>
+              That is how the portable <code>oglapi_t</code> enum becomes enforceable. A backend may succeed in creating some context,
+              but the wrapper still rejects it if the requested API level is not actually available through GLEW.
+            </p>
+          </section>
+
+          <section id="platforms" class="section">
+            <h2>Platform Backend Behavior</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Platform</th>
+                  <th>Context Type</th>
+                  <th>Backend-Specific Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Windows</td>
+                  <td><code>HGLRC</code></td>
+                  <td>Uses an <code>HWND</code> plus <code>HDC</code>, chooses a pixel format, creates a WGL context, and swaps with <code>SwapBuffers</code>.</td>
+                </tr>
+                <tr>
+                  <td>macOS</td>
+                  <td><code>NSOpenGLContext</code></td>
+                  <td>Builds a profile-aware <code>NSOpenGLPixelFormat</code>, binds the context to the target <code>NSView</code>, and flushes with <code>flushBuffer</code>.</td>
+                </tr>
+                <tr>
+                  <td>GTK</td>
+                  <td><code>EGLContext</code></td>
+                  <td>Uses EGL on top of X11-backed GTK widgets, disables GTK double buffering, and swaps with <code>eglSwapBuffers</code>.</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section id="widget-binding" class="section">
+            <h2>Binding To NAppGUI Views</h2>
+            <p>
+              All three backends adapt the native widget state so the OpenGL context can coexist with NAppGUI's normal 2D drawing path.
+              Windows marks NAppGUI view windows as non-GDI when an OpenGL context is attached. macOS calls Objective-C category hooks
+              on <code>NSView</code> to switch the view into an OpenGL-aware mode. GTK renames the widget from the Cairo path to an OpenGL path
+              and turns GTK double buffering off while the context is alive.
+            </p>
+            <p>
+              That is why <code>ogl3d</code> works best when paired with a <code>View</code> widget: the native view object is the seam where
+              the backend swaps from normal GUI drawing to OpenGL ownership.
+            </p>
+          </section>
+
+          <section id="resize" class="section">
+            <h2>Resize Handling Is Backend-Specific</h2>
+            <p>
+              <code>ogl3d_set_size(...)</code> is not a generic viewport helper. The demos still call it from the view size callback,
+              but the backend behavior differs by platform. On macOS it calls <code>[NSOpenGLContext update]</code>, while the Windows
+              and GTK implementations are effectively no-ops and leave size handling to the caller's GL viewport logic.
+            </p>
+          </section>
+
+          <section id="glhello" class="section">
+            <h2>What glhello Shows About Real Usage</h2>
+            <p>
+              <code>demo/glhello</code> is the canonical integration pattern. The app starts <code>ogl3d</code> once, creates a normal NAppGUI
+              <code>View</code>, converts it to a native handle with <code>view_native(...)</code>, and then builds small wrappers around
+              <code>OGLCtx</code> for OpenGL 1.1, 2.1, and 3.3.
+            </p>
+            <p>
+              Those wrappers own the real GPU objects: textures, VBOs, IBOs, VAOs, and shader programs. <code>ogl3d</code> itself never tries
+              to manage that state. Its job ends at context management and buffer swapping.
+            </p>
+            <div class="callout">
+              The demo list also shows placeholder items for DirectX, Vulkan, and Metal, but those are UI stubs only. In this checkout
+              <code>ogl3d</code> is OpenGL-only.
+            </div>
+          </section>
+
+          <section id="reading" class="section">
+            <h2>Reading Order</h2>
+            <p>
+              Start with <code>ogl3d.h</code> and <code>ogl3d.hxx</code> for the public contract, then read <code>ogl3d.c</code> for
+              lifecycle and version checks. After that, read the platform backend that matches your target OS, and finish with the
+              three <code>glhello</code> renderer wrappers to see how an application layers its own GPU resource management on top.
+            </p>
+          </section>
+        </article>
+      </main>
+    </div>
+
+    <aside class="toc"></aside>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>
