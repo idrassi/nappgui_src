@@ -31,6 +31,8 @@
               <a class="pill" href="../../src/osapp/win/osapp_win.c"><code>src/osapp/win/osapp_win.c</code></a>
               <a class="pill" href="../../src/osgui/win/osgui_win.cpp"><code>src/osgui/win/osgui_win.cpp</code></a>
               <a class="pill" href="../../src/osgui/win/oswindow.c"><code>src/osgui/win/oswindow.c</code></a>
+              <a class="pill" href="../../src/osgui/win/osbutton.c"><code>src/osgui/win/osbutton.c</code></a>
+              <a class="pill" href="../../src/osgui/win/ospanel.c"><code>src/osgui/win/ospanel.c</code></a>
               <a class="pill" href="../../src/draw2d/win/draw_win.cpp"><code>src/draw2d/win/draw_win.cpp</code></a>
               <a class="pill" href="../../src/draw2d/win/osimage.cpp"><code>src/draw2d/win/osimage.cpp</code></a>
               <a class="pill" href="../../src/osgui/win/osweb.cpp"><code>src/osgui/win/osweb.cpp</code></a>
@@ -91,6 +93,11 @@
             </p>
             <p>
               That means the Windows rendering story is still very much rooted in the classic Win32/GDI ecosystem, even though the API surface above it is portable.
+            </p>
+            <p>
+              The current button backend uses the shared flat-button helper code to size and place text/images for
+              <code>button_image_pos(...)</code>. Panel painting also handles layout-level areas, including the group-box frames requested
+              by <code>layout_group(...)</code>.
             </p>
           </section>
 

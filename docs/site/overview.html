@@ -22,7 +22,7 @@
           </p>
 
           <div class="callout warn">
-            This page is written against commit <code>2b0099603323ae7a35b8ee6998d35af94f5b16c8</code> from <code>2026-03-17</code>, version <code>1.6.1</code>.
+            This page is written against commit <code>0a1eaf3bdbe9e1b530550fe3a392e2d37a065687</code> from <code>2026-04-25</code>, version <code>1.6.2</code>.
             All architectural statements here were verified directly against the checked-out source tree.
           </div>
 
@@ -122,7 +122,7 @@
             <h2>Cross-Cutting Systems</h2>
             <ul class="bullet-list">
               <li><strong>GuiCtx:</strong> backend function tables let the high-level GUI layer work without directly depending on one platform implementation.</li>
-              <li><strong>Layout:</strong> recursive grid composition with a documented natural-size and expansion pass.</li>
+              <li><strong>Layout:</strong> recursive grid composition with a documented natural-size and expansion pass, plus layout-level background, stroke, and group-box decoration.</li>
               <li><strong>DBind:</strong> runtime type metadata plus layout/member binding for data-driven controls.</li>
               <li><strong>Resources:</strong> embedded and packed resource modes via <code>nrc</code>, <code>respack</code>, and <code>gui_respack()</code>.</li>
               <li><strong>Events:</strong> typed listener callbacks used across UI and core subsystems.</li>

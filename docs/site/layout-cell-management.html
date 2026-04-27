@@ -50,7 +50,7 @@
             <p>
               Beyond content, each cell tracks enabled/visible state, tabstop participation, per-axis alignment,
               forced size, computed final size/origin, and padding. The surrounding <code>Layout</code> tracks line sizes,
-              expand weights, margins, background/stroke colors, DBind metadata, and a pointer back to its owning panel.
+              expand weights, margins, background/stroke colors, group-box state and text, DBind metadata, and a pointer back to its owning panel.
             </p>
           </section>
 
@@ -104,6 +104,11 @@
                   <td>Visibility and tab order</td>
                   <td><code>layout_show_col</code>, <code>layout_show_row</code>, <code>layout_taborder</code>, <code>layout_tabstop</code></td>
                   <td>Removes lines from layout flow and controls keyboard navigation order.</td>
+                </tr>
+                <tr>
+                  <td>Decoration</td>
+                  <td><code>layout_bgcolor</code>, <code>layout_skcolor</code>, <code>layout_group</code></td>
+                  <td>Requests backend-drawn layout areas, including labelled group-box frames.</td>
                 </tr>
               </tbody>
             </table>

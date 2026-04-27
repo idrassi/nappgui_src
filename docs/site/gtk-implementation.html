@@ -25,6 +25,8 @@
             <div class="source-pills">
               <a class="pill" href="../../src/osapp/gtk/osapp_gtk.c"><code>src/osapp/gtk/osapp_gtk.c</code></a>
               <a class="pill" href="../../src/osgui/gtk/oswindow.c"><code>src/osgui/gtk/oswindow.c</code></a>
+              <a class="pill" href="../../src/osgui/gtk/osbutton.c"><code>src/osgui/gtk/osbutton.c</code></a>
+              <a class="pill" href="../../src/osgui/gtk/ospanel.c"><code>src/osgui/gtk/ospanel.c</code></a>
               <a class="pill" href="../../src/draw2d/gtk/draw_gtk.c"><code>src/draw2d/gtk/draw_gtk.c</code></a>
               <a class="pill" href="../../src/osgui/gtk/osweb.c"><code>src/osgui/gtk/osweb.c</code></a>
               <a class="pill" href="../../prj/NAppCompilers.cmake"><code>prj/NAppCompilers.cmake</code></a>
@@ -94,6 +96,15 @@
             <p>
               The GTK text path also maps NAppGUI features like underline, strikeout, ellipsis, and alignment to Pango markup and alignment modes.
               In practice, GTK is the backend where the draw2d abstraction is most visibly layered over external graphics/text libraries.
+            </p>
+            <p>
+              Button text handling has a separate GTK path in <code>osbutton.c</code>. It now uses <code>PangoAttrList</code> for
+              underlined mnemonic characters instead of embedding markup in the button label, and the flat-button code shares common
+              sizing and image-position helpers with the other native backends.
+            </p>
+            <p>
+              Layout group boxes are emitted through <code>ospanel_area(...)</code>, so GTK draws layout background, stroke, and group
+              decorations from the panel layer while the public API remains <code>layout_group(...)</code>.
             </p>
           </section>
 

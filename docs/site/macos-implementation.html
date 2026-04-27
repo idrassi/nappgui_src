@@ -24,15 +24,15 @@
           <div class="meta-grid">
             <div class="meta-item">
               <span>Verified Commit</span>
-              <strong><code>2b0099603323ae7a35b8ee6998d35af94f5b16c8</code></strong>
+              <strong><code>0a1eaf3bdbe9e1b530550fe3a392e2d37a065687</code></strong>
             </div>
             <div class="meta-item">
               <span>Commit Date</span>
-              <strong><code>2026-03-17</code></strong>
+              <strong><code>2026-04-25</code></strong>
             </div>
             <div class="meta-item">
               <span>Version</span>
-              <strong><code>1.6.1</code></strong>
+              <strong><code>1.6.2</code></strong>
             </div>
             <div class="meta-item">
               <span>Backend Scope</span>
@@ -53,6 +53,8 @@
               <a class="pill" href="../../src/osgui/osx/osglobals.m"><code>src/osgui/osx/osglobals.m</code></a>
               <a class="pill" href="../../src/osgui/osx/oscolor.m"><code>src/osgui/osx/oscolor.m</code></a>
               <a class="pill" href="../../src/osgui/osx/oscontrol.m"><code>src/osgui/osx/oscontrol.m</code></a>
+              <a class="pill" href="../../src/osgui/osx/osbutton.m"><code>src/osgui/osx/osbutton.m</code></a>
+              <a class="pill" href="../../src/osgui/osx/ospanel.m"><code>src/osgui/osx/ospanel.m</code></a>
               <a class="pill" href="../../src/osgui/osx/oscombo.m"><code>src/osgui/osx/oscombo.m</code></a>
               <a class="pill" href="../../src/osgui/osx/ospopup.m"><code>src/osgui/osx/ospopup.m</code></a>
               <a class="pill" href="../../src/osgui/osx/osview.m"><code>src/osgui/osx/osview.m</code></a>
@@ -327,6 +329,11 @@
               but delegates most text behavior to an internal text-field helper, while <code>ospopup.m</code> stores a local
               <code>OSTextAttr</code> and updates the <code>NSPopUpButton</code> title styling through shared helpers.
             </p>
+            <p>
+              The current flat-button path in <code>osbutton.m</code> uses custom drawing for flat and flatgle buttons, including
+              alternate text/image state and image placement from <code>button_image_pos(...)</code>. Layout group boxes are handled
+              at the panel layer through <code>ospanel_area(...)</code>, which creates an <code>NSBox</code> frame and draws the group title.
+            </p>
             <div class="sources">
               <strong>Sources</strong>
               <ul class="source-list">
@@ -448,7 +455,7 @@
               <tbody>
                 <tr>
                   <td>Verification basis</td>
-                  <td>This page is grounded in commit <code>2b009960</code> from <code>2026-03-17</code> and the current repository files.</td>
+                  <td>This page is grounded in commit <code>0a1eaf3</code> from <code>2026-04-25</code> and the current repository files.</td>
                 </tr>
                 <tr>
                   <td>Theme handling</td>

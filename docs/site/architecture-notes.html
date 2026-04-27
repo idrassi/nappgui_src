@@ -24,15 +24,15 @@
           <div class="meta-grid">
             <div class="meta-item">
               <span>Verified Commit</span>
-              <strong><code>2b0099603323ae7a35b8ee6998d35af94f5b16c8</code></strong>
+              <strong><code>0a1eaf3bdbe9e1b530550fe3a392e2d37a065687</code></strong>
             </div>
             <div class="meta-item">
               <span>Commit Date</span>
-              <strong><code>2026-03-17</code></strong>
+              <strong><code>2026-04-25</code></strong>
             </div>
             <div class="meta-item">
               <span>Version</span>
-              <strong><code>1.6.1</code></strong>
+              <strong><code>1.6.2</code></strong>
             </div>
             <div class="meta-item">
               <span>Scope</span>
@@ -254,6 +254,11 @@
               <code>_layout_natural()</code> computes natural sizes and <code>_layout_expand()</code> distributes the
               available space. After composition, <code>_layout_locate()</code> applies the final geometry to controls and sublayouts.
             </p>
+            <p>
+              Layouts can now also draw a group-box decoration through <code>layout_group(...)</code>. During locate,
+              grouped layouts share the same panel-area path used by layout background and stroke colors, so the backend can draw
+              the labelled group frame behind the composed cells.
+            </p>
             <h3>Panel</h3>
             <p>
               A <code>Panel</code> is a layout host, not just a single-layout wrapper. Internally it owns
@@ -407,6 +412,7 @@
             <h2>Key Verified Architecture Points</h2>
             <ul class="bullet-list">
               <li><code>Panel</code> can host multiple layouts and switch the visible one.</li>
+              <li><code>layout_group(...)</code> marks a layout for backend-drawn group-box decoration.</li>
               <li><code>window_panel(...)</code> wraps the panel in an internal <code>1x1</code> layout.</li>
               <li><code>gui</code> does not directly depend on <code>osgui</code>; both depend on <code>draw2d</code>, and <code>osapp</code> joins them.</li>
               <li>The canonical desktop app entry is <code>osmain(...)</code>, while <code>_osapp_run(...)</code> is internal.</li>

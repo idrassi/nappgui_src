@@ -102,7 +102,8 @@ $json = $entries | ConvertTo-Json -Depth 6 -Compress
 $content = @(
     "window.NAPPGUI_SEARCH_INDEX = $json;"
     ""
-) -join [Environment]::NewLine
+) -join "`n"
 
-Set-Content -Path $outFile -Value $content -Encoding UTF8
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+[System.IO.File]::WriteAllText($outFile, $content, $utf8NoBom)
 Write-Output "Generated $outFile with $($entries.Count) entries."

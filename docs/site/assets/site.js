@@ -199,8 +199,8 @@
       </nav>
       ${groupsHtml}
       <div class="sidebar-note">
-        Verified against commit <code>2b0099603323ae7a35b8ee6998d35af94f5b16c8</code>,
-        dated <code>2026-03-17</code>, version <code>1.6.1</code>.
+        Verified against commit <code>0a1eaf3bdbe9e1b530550fe3a392e2d37a065687</code>,
+        dated <code>2026-04-25</code>, version <code>1.6.2</code>.
       </div>
     `;
   }

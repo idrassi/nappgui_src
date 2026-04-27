@@ -32,6 +32,7 @@
               <a class="pill" href="../../src/gui/progress.h"><code>src/gui/progress.h</code></a>
               <a class="pill" href="../../src/gui/updown.h"><code>src/gui/updown.h</code></a>
               <a class="pill" href="../../src/gui/layout.c"><code>src/gui/layout.c</code></a>
+              <a class="pill" href="../../src/draw2d/guictx.hxx"><code>src/draw2d/guictx.hxx</code></a>
             </div>
           </section>
 
@@ -41,6 +42,12 @@
               <code>button.h</code> exposes multiple shapes behind one type: push, check, tri-state check, radio, flat, and
               <code>flatgle</code>. A button can carry text, alternate text, image, alternate image, tooltip, font, tag value,
               and custom padding, then report activation through <code>button_OnClick(...)</code>.
+            </p>
+            <p>
+              Flat and flatgle buttons also support explicit image placement with <code>button_image_pos(...)</code>.
+              The position uses <code>gui_pos_t</code> values from the backend context layer:
+              no text/image composition, image left, top, right, or bottom. The common flat-button sizing helpers account for
+              image size, text size, separator spacing, and horizontal/vertical padding.
             </p>
             <p>
               The stateful variants reuse the same API surface through <code>button_state(...)</code> and <code>button_get_state(...)</code>,

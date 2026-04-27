@@ -17,13 +17,15 @@
           <h1 class="page-title">Layout Components</h1>
           <p class="lead">
             The layout-oriented widget set includes panels, split views, windows, menus, common dialogs, and the simple
-            line separator widget. Together they define how NAppGUI structures screens above the individual control level.
+            line separator widget. Together they define how NAppGUI structures screens above the individual control level,
+            including layout-level group boxes for labelled visual sections.
           </p>
 
           <section id="sources" class="section">
             <h2>Relevant Source Files</h2>
             <div class="source-pills">
               <a class="pill" href="../../src/gui/panel.h"><code>src/gui/panel.h</code></a>
+              <a class="pill" href="../../src/gui/layout.h"><code>src/gui/layout.h</code></a>
               <a class="pill" href="../../src/gui/splitview.h"><code>src/gui/splitview.h</code></a>
               <a class="pill" href="../../src/gui/window.h"><code>src/gui/window.h</code></a>
               <a class="pill" href="../../src/gui/line.h"><code>src/gui/line.h</code></a>
@@ -45,6 +47,20 @@
             <p>
               Internally, panels can host multiple layouts and swap which one is active. That makes them a reusable view-switching primitive,
               not just a passive parent for one child tree.
+            </p>
+          </section>
+
+          <section id="groupbox" class="section">
+            <h2>Layout Group Boxes</h2>
+            <p>
+              <code>layout_group(...)</code> lets a layout draw a labelled group-box frame around its composed area.
+              The flag and title live on <code>Layout</code>, not on a separate widget, so grouping follows the same recursive
+              layout model as margins, background color, stroke color, and nested layouts.
+            </p>
+            <p>
+              During layout location, grouped layouts call the panel-area backend hook with the group title.
+              That lets Win32, Cocoa, and GTK render the decoration in their own panel implementations while the public API
+              remains a single layout-level setting.
             </p>
           </section>
 
@@ -92,8 +108,8 @@
               For lightweight visual separation inside layouts, <code>line.h</code> provides horizontal and vertical line widgets with explicit length.
             </p>
             <p>
-              The line widget matters in this checkout because the most recent commit message references support for decoration separators,
-              which lines are the public API surface for.
+              Use <code>Line</code> for inline separators inside a grid and <code>layout_group(...)</code> when the whole nested layout
+              should read as a labelled section.
             </p>
           </section>
         </article>

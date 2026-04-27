@@ -123,7 +123,7 @@ def main() -> int:
         separators=(",", ":"),
     ) + ";\n"
 
-    out_file.write_text(content, encoding="utf-8")
+    out_file.write_text(content, encoding="utf-8", newline="\n")
     print(f"Generated {out_file} with {len(entries)} entries.")
     return 0
 

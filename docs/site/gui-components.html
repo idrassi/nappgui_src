@@ -41,6 +41,7 @@
               The umbrella header includes all of the major GUI families: buttons, edits, combos, popups, sliders,
               progress bars, labels, image views, list boxes, table views, views, text views, web views, split views,
               panels, layouts, menus, menu items, windows, line widgets, and the shared <code>gui.h</code> service API.
+              The current layout surface also includes <code>layout_group(...)</code> for group-box decoration.
             </p>
             <p>
               That means application code can often include just <code>nappgui.h</code> or <code>gui/guiall.h</code> and get the full desktop surface.
@@ -81,7 +82,7 @@
                 <tr>
                   <td>Containers</td>
                   <td><code>layout.h</code>, <code>cell.h</code>, <code>panel.h</code>, <code>splitview.h</code>, <code>window.h</code></td>
-                  <td>Composition, nesting, scrolling, panel switching, and top-level window behavior.</td>
+                  <td>Composition, nesting, scrolling, group-box decoration, panel switching, and top-level window behavior.</td>
                 </tr>
                 <tr>
                   <td>Menus and dialogs</td>
